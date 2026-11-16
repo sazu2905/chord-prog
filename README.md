@@ -16,6 +16,8 @@ Open `index.html` in a browser. Everything is in that one file (HTML, CSS, JavaS
 - **Import / export:** export any or all saved progressions as JSON (copy or download), including key, mode, tempo, meter, drum settings and a readable chord chart. Import from a `.json` file or pasted JSON; entries are validated, unreadable ones are skipped, and name clashes can be kept side by side or replaced.
 - **Song sections:** label chords as Intro, Verse, Chorus, Bridge, A/B/C… (or any name). Each section gets a colour-coded header with select, play-from, copy, duplicate, rename and remove. Copying a section carries its label; pasting into the middle of another section keeps the rest of that section intact. A **＋ New section** tile starts the next section, and the Add button always says which section a new chord goes into. Labels appear on the staff, in the text chart, and in saves and exports.
 - **Chord construction:** every chord type is defined by its scale-degree formula (e.g. `1 3 5 ♭7 9 11`), and note names are spelled from it, so a 3rd is always a 3rd (G♯ in E major, B𝄫 in C°7). Where common practice leaves a tone out of the voicing (the 3rd in an 11 chord, the 11th in 13 chords, the 5th in 7♭13), the formula stays complete and the picker notes the omission. When the bass is off, the root is always voiced.
+- **Download ▾ → Text:** a readable chord chart for the current song (title, key, tempo, form, section headings, bar lines with beat slashes), with options for Roman numerals and bars per line. Copy it into Google Docs, a notebook or an email, or download it as `.txt`.
+- **Takes:** record yourself over the song from the microphone, with an optional count-in, live level meter and timer. Play each take alone or lined up with the song, rename it, set its volume, nudge its sync, or delete it. Audio files can be added as takes too. Takes are stored per song in the browser (IndexedDB) and are never uploaded or exported. The panel collapses like the drums. Note: the Claude artifact viewer blocks microphones, so record from GitHub Pages or a local copy.
 - **Staff view:** a read-only grand staff showing the exact piano voicing and bass note played for every chord, highlighted during playback, with a First time / On repeat switch where voice leading voices the loop differently.
 - **Drums:** 8 styles, presence sliders for kick, snare, hats, cymbals and toms, auto fills, swing, and an expandable 16-step sequencer with accents and ghost notes. The panel collapses to a single line so the beat can keep running out of the way.
 - **Inspire me:** generates a random 8-bar progression in the current key in a chosen style (jazz standard, bossa nova, neo-soul, gospel, 8-bar blues, pop, modal vamp, or surprise me). Audition it, then start a new progression from it or insert it into the current one.
@@ -26,7 +28,7 @@ Open `index.html` in a browser. Everything is in that one file (HTML, CSS, JavaS
 
 ## Storage
 
-Progressions and settings are saved in the browser's `localStorage`. Nothing is uploaded, so saved progressions stay on the device and browser where they were made. Use Open → Export / Import to move them between browsers or devices.
+Progressions and settings are saved in the browser's `localStorage`. Nothing is uploaded, so saved progressions stay on the device and browser where they were made. Use Open → Export JSON / Import JSON to move them between browsers or devices. Recorded takes are kept in the browser's IndexedDB and are not included in exports.
 
 ## Roadmap
 
