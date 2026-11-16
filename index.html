@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0e131d">
 <title>Changes — Chord Progression Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Music&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0e131d; --panel:#151c2a; --panel2:#1b2436; --line:#27324a; --line2:#33405c;
@@ -184,6 +184,53 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .cell.dim.v1,.cell.dim.v2,.cell.dim.v3{filter:grayscale(1) brightness(.6)}
 .cell.ph{outline:1px solid var(--good)}
 .cell.ph.v0{background:rgba(94,196,182,.18)}
+.strip{position:relative}
+.marq{position:absolute;border:1px solid var(--brass);background:rgba(217,164,65,.10);border-radius:4px;pointer-events:none;z-index:3}
+.cc.gone{display:none}
+.cc.ghost.multi{box-shadow:6px 6px 0 -1px var(--panel2),6px 6px 0 0 var(--line2),12px 12px 0 -1px var(--panel2),12px 12px 0 0 var(--line2),0 18px 40px rgba(0,0,0,.55)}
+.cc.ghost .gbadge{position:absolute;top:6px;right:8px;font:600 11px var(--mono);background:var(--brass);color:var(--brass-ink);border-radius:999px;padding:1px 7px}
+.cc.ghost.copy .gbadge{background:var(--good)}
+.docbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.docname{display:flex;align-items:baseline;gap:10px;margin-right:6px;min-width:0}
+.docname b{font-family:var(--display);font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.docstate{font-size:12px;color:var(--muted);white-space:nowrap}
+.docstate.dirty{color:var(--near)}
+.docstate.dirty::before{content:'● '}
+.libwrap{position:relative}
+.lib{position:absolute;top:calc(100% + 6px);left:0;z-index:20;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.5);padding:6px;min-width:280px;max-height:340px;overflow:auto}
+.lib .li{display:flex;align-items:center;border-radius:8px}
+.lib .li:hover{background:var(--panel2)}
+.lib .li.cur{background:rgba(217,164,65,.1)}
+.lib .li button{background:none;border:0;cursor:pointer;color:var(--text);text-align:left;padding:8px 10px}
+.lib .li .o{flex:1}
+.lib .li small{display:block;color:var(--muted);font-size:12px}
+.lib .li .d{color:var(--dim);font-size:13px}
+.lib .li .d:hover{color:var(--off)}
+.lib .none{padding:12px;color:var(--muted);font-size:13px}
+.dlg h3{margin-bottom:6px}
+.dlg p{margin:0 0 10px;color:var(--muted);font-size:14px}
+.dlg .txt{width:100%;padding:8px 10px}
+.dbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.staffwrap{border:1px solid var(--line2);border-radius:12px;background:#0b1019;padding:10px 10px 6px}
+.staffhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:0 4px 6px}
+.staffhead .sp{flex:1}
+.staffhead i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+#staffSvg svg{display:block}
+.sc .hl{fill:transparent}
+.sc.now .hl{fill:rgba(94,196,182,.13)}
+.sc .sym{font-family:var(--display);font-size:15px;fill:var(--text)}
+.sc.cont .sym{fill:var(--dim)}
+.sc .nh{fill:none;stroke:var(--text);stroke-width:1.7}
+.sc .nh.bs{stroke:var(--good)}
+.sc.cont .nh{stroke:var(--dim)}
+.sc .acc{font-size:16px;fill:var(--text);font-family:"Noto Music","Apple Symbols","Segoe UI Symbol",serif}
+.sc .acc.bs{fill:var(--good)}
+.sc .lg{stroke:var(--muted);stroke-width:1}
+.stl{stroke:#4a5675;stroke-width:1}
+.bar{stroke:#6b7590;stroke-width:1}
+.clef{fill:var(--muted);font-family:"Noto Music","Apple Symbols","Segoe UI Symbol",serif}
+.bnum{font:10px var(--mono);fill:var(--dim)}
+.staffnote{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -208,9 +255,17 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 
 <main>
   <section class="card">
+    <div class="docbar">
+      <div class="docname"><b id="docName">Untitled</b><span class="docstate" id="docState"></span></div>
+      <button class="btn small" id="newBtn">＋ New</button>
+      <button class="btn small" id="saveBtn">Save</button>
+      <button class="btn small" id="saveAsBtn">Save as…</button>
+      <span class="libwrap"><button class="btn small" id="openBtn">Open ▾</button><div class="lib" id="lib" hidden></div></span>
+    </div>
     <div class="phead">
       <h2>Progression</h2>
       <span class="muted" id="progMeta"></span>
+      <div class="seg" id="viewSeg"><button data-v="chords">Chords</button><button data-v="staff">Staff</button></div>
       <span class="sp"></span>
       <div class="opts">
         <button class="chipbtn" id="loopBtn">⟲ Loop</button>
@@ -222,6 +277,7 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
       </div>
     </div>
     <div id="strip" class="strip"></div>
+    <div id="staff" class="staffwrap" hidden><div class="staffhead" id="staffHead"></div><div id="staffSvg"></div><p class="staffnote" id="staffNote"></p></div>
     <div id="selbar" class="selbar" hidden></div>
     <div class="tools">
       <div class="group">
@@ -233,17 +289,17 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
         <button class="btn small" id="tDown">−½</button>
         <button class="btn small" id="tUp">+½</button>
       </div>
+      <div class="group">
+        <button class="btn small" id="selAllBtn">Select all</button>
+        <button class="chipbtn" id="multiBtn" title="Tap chords to add or remove them from the selection">Multi-select</button>
+        <button class="btn small" id="pasteBtn" hidden>Paste</button>
+      </div>
       <span class="sp"></span>
-      <button class="btn small" id="copyBtn">Copy chart</button>
+      <button class="btn small" id="copyBtn">Copy as text</button>
       <button class="btn small danger" id="clearBtn">Clear</button>
     </div>
-    <div class="saverow">
-      <input class="txt" id="saveName" placeholder="Name this progression" maxlength="40">
-      <button class="btn small" id="saveBtn">Save</button>
-      <div class="saved" id="savedList"></div>
-    </div>
-    <p class="hint">Drag chords to reorder. Click a chord to edit it, double-click to jump the playhead there.
-      <span class="kbds"><kbd>Space</kbd> play/pause · <kbd>Enter</kbd> add · <kbd>←</kbd><kbd>→</kbd> select · <kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> move · <kbd>Del</kbd> remove · <kbd>Esc</kbd> deselect</span></p>
+    <p class="hint">Drag chords to reorder. Drag across empty space to select several, or Shift-click a range. Drag a selection to move it; hold <kbd>Alt</kbd> while dropping to copy it. Double-click a chord to play from there.
+      <span class="kbds"><kbd>Space</kbd> play/pause · <kbd>Enter</kbd> add · <kbd>Ctrl/⌘ C X V D A</kbd> copy, cut, paste, duplicate, select all · <kbd>←</kbd><kbd>→</kbd> select · <kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> extend · <kbd>Alt</kbd>+<kbd>←</kbd><kbd>→</kbd> move · <kbd>Del</kbd> remove · <kbd>Esc</kbd> deselect</span></p>
   </section>
 
   <section class="card drums" id="drumCard">
@@ -396,13 +452,13 @@ const pcm=n=>((n%12)+12)%12;
 
 /* ================= state ================= */
 const LS='changes.v1';
-const DEF={prog:[],key:0,mode:'ionian',spell:'auto',pr:2,pq:'m7',pb:null,len:4,bpm:110,meter:4,loop:true,metro:false,bass:true,sound:'keys',feel:'held',dia7:true,saved:{},preview:true,follow:true,
+const DEF={prog:[],key:0,mode:'ionian',spell:'auto',pr:2,pq:'m7',pb:null,len:4,bpm:110,meter:4,loop:true,metro:false,bass:true,sound:'keys',feel:'held',dia7:true,saved:{},preview:true,follow:true,cur:null,clip:null,view:'chords',
   dr:{on:true,base:'swing',style:'swing',swing:66,fills:'end',vol:75,pres:{kick:45,snare:45,hats:60,cym:65,toms:40},mutes:{},open:false,grid:null}};
 let S=Object.assign({},DEF);
 try{const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d) S=Object.assign(S,d);}catch(e){}
 S.dr=Object.assign({},DEF.dr,S.dr||{}); S.dr.pres=Object.assign({},DEF.dr.pres,S.dr.pres||{}); S.dr.mutes=S.dr.mutes||{};
 S.sel=null;
-function persist(){try{const {sel,...rest}=S; localStorage.setItem(LS,JSON.stringify(rest));}catch(e){}}
+function persist(){try{const {sel,multi,...rest}=S; localStorage.setItem(LS,JSON.stringify(rest));}catch(e){} if(typeof renderDoc==='function'&&document.getElementById('docName')) try{renderDoc();}catch(e){}}
 const uid=()=>Math.random().toString(36).slice(2,9);
 
 function parentPc(){return pcm(S.key-MODES[S.mode].off)}
@@ -463,15 +519,22 @@ function setKeyMode(k,m){
 
 /* ================= history ================= */
 const hist=[],fut=[];
-const snap=()=>JSON.stringify({prog:S.prog,key:S.key,mode:S.mode});
-function restore(j){const o=JSON.parse(j); S.prog=o.prog; S.key=o.key; S.mode=o.mode;}
+const snap=()=>JSON.stringify({prog:S.prog,key:S.key,mode:S.mode,cur:S.cur});
+function restore(j){const o=JSON.parse(j); S.prog=o.prog; S.key=o.key; S.mode=o.mode; if('cur' in o) S.cur=o.cur;}
 function commit(fn){hist.push(snap()); if(hist.length>150)hist.shift(); fut.length=0; fn(); changed();}
 function undo(){if(!hist.length)return; fut.push(snap()); restore(hist.pop()); fixSel(); changed();}
 function redo(){if(!fut.length)return; hist.push(snap()); restore(fut.pop()); fixSel(); changed();}
-function fixSel(){if(S.sel&&!S.prog.some(c=>c.id===S.sel))S.sel=null;}
 function changed(){renderAll(); persist();}
+
+/* selection: SEL holds every selected id; S.sel is the focused one */
+let SEL=new Set(), ANCHOR=null;
+function setSel(ids,primary){SEL=new Set(ids); S.sel=primary!==undefined?primary:(ids.length?ids[ids.length-1]:null); if(S.sel!=null) SEL.add(S.sel); if(ids.length<=1) ANCHOR=S.sel;}
+function clearSel(){SEL=new Set(); S.sel=null; ANCHOR=null;}
+function fixSel(){const ok=new Set(S.prog.map(c=>c.id)); SEL=new Set([...SEL].filter(id=>ok.has(id))); if(S.sel&&!SEL.has(S.sel)) S.sel=SEL.size?[...SEL].pop():null; if(ANCHOR&&!ok.has(ANCHOR)) ANCHOR=S.sel;}
+const selChords=()=>S.prog.filter(c=>SEL.has(c.id));
 const selIdx=()=>S.prog.findIndex(c=>c.id===S.sel);
 const selChord=()=>S.prog.find(c=>c.id===S.sel)||null;
+function lastSelIdx(){let k=-1; S.prog.forEach((c,i)=>{if(SEL.has(c.id)) k=i;}); return k;}
 
 /* ================= audio ================= */
 let ctx=null,bus=null,dry=null,voices=[],noiseBuf=null,drumBus=null;
@@ -693,7 +756,7 @@ function scheduleBeat(){
 const UI={el:null};
 function clearNowUI(){
   document.querySelectorAll('.cc.now').forEach(el=>{el.classList.remove('now'); el.querySelector('.fill').style.width='0'; el.querySelectorAll('.ticks i').forEach(i=>i.classList.remove('on'));});
-  UI.el=null; $('#nowChip').innerHTML='';
+  UI.el=null; UI.sid=null; $('#nowChip').innerHTML=''; document.querySelectorAll('#staffSvg .sc.now').forEach(x=>x.classList.remove('now'));
   document.querySelectorAll('#drGrid .ph').forEach(x=>x.classList.remove('ph')); UI.step=null;
 }
 function frame(){
@@ -705,14 +768,18 @@ function frame(){
     const st=ev.bib*4+Math.min(3,Math.floor((now-ev.t)/ev.spb*4));
     if(st!==UI.step){document.querySelectorAll('#drGrid .ph').forEach(x=>x.classList.remove('ph')); document.querySelectorAll(`#drGrid .cell[data-s="${st}"]`).forEach(x=>x.classList.add('ph')); UI.step=st;}
   }
+  const c=S.prog.find(x=>x.id===ev.id);
+  if(c) $('#nowChip').innerHTML=`<b>${sym(c)}</b> · beat ${ev.beat+1}/${ev.beats}`;
+  if(S.view==='staff'){
+    if(UI.sid!==ev.id){document.querySelectorAll('#staffSvg .sc.now').forEach(x=>x.classList.remove('now')); document.querySelectorAll(`#staffSvg .sc[data-id="${ev.id}"]`).forEach(x=>x.classList.add('now')); UI.sid=ev.id;}
+    return;
+  }
   const el=strip.querySelector(`.cc[data-id="${ev.id}"]`);
   if(el!==UI.el){ if(UI.el){UI.el.classList.remove('now'); const f=UI.el.querySelector('.fill'); if(f)f.style.width='0'; UI.el.querySelectorAll('.ticks i').forEach(i=>i.classList.remove('on'));} UI.el=el; if(el) el.classList.add('now'); }
   if(!el) return;
   const frac=Math.min(1,(now-ev.t)/ev.spb), pct=Math.min(100,(ev.beat+frac)/ev.beats*100);
   el.querySelector('.fill').style.width=pct+'%';
   el.querySelectorAll('.ticks i').forEach((i,k)=>i.classList.toggle('on',k<=ev.beat));
-  const c=S.prog.find(x=>x.id===ev.id);
-  if(c) $('#nowChip').innerHTML=`<b>${sym(c)}</b> · beat ${ev.beat+1}/${ev.beats}`;
 }
 requestAnimationFrame(frame);
 
@@ -733,38 +800,48 @@ function renderTop(){
 function renderProg(){
   const n=S.prog.length, beats=S.prog.reduce((a,c)=>a+c.beats,0);
   $('#progMeta').textContent=n?`${n} chord${n>1?'s':''} · ${+(beats/S.meter).toFixed(2)} bars`:'';
+  $('#viewSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
+  const staff=S.view==='staff';
+  strip.hidden=staff; $('#staff').hidden=!staff;
   if(!n){ strip.innerHTML='<div class="empty">Pick a root and a chord type below, then press <b>+ Add</b> — or tap a chord in “Chords in this mode”.</div>'; }
   else strip.innerHTML=S.prog.map((c,i)=>{
     const s=sym(c), r=roman(c), cls=s.length>9?'xl':s.length>6?'long':'';
-    return `<div class="cc${c.id===S.sel?' sel':''}" data-id="${c.id}" style="--beats:${c.beats}"><div class="fill"></div><span class="idx">${i+1}</span><div class="sym ${cls}">${s}</div><div class="foot"><span class="rn${r.dia?'':' out'}" title="${r.dia?'Diatonic to the mode':'Borrowed / chromatic'}">${r.t}</span><span class="ticks">${'<i></i>'.repeat(Math.min(c.beats,8))}</span></div></div>`;
+    return `<div class="cc${SEL.has(c.id)?' sel':''}" data-id="${c.id}" style="--beats:${c.beats}"><div class="fill"></div><span class="idx">${i+1}</span><div class="sym ${cls}">${s}</div><div class="foot"><span class="rn${r.dia?'':' out'}" title="${r.dia?'Diatonic to the mode':'Borrowed / chromatic'}">${r.t}</span><span class="ticks">${'<i></i>'.repeat(Math.min(c.beats,8))}</span></div></div>`;
   }).join('');
-  UI.el=null;
-  const sb=$('#selbar'), c=selChord();
-  if(c){
-    const i=selIdx();
+  UI.el=null; UI.sid=null;
+  if(staff) renderStaff();
+  const sb=$('#selbar'), k=SEL.size, clipN=S.clip?S.clip.length:0;
+  if(k&&!staff){
+    const c=selChord(), i=selIdx(), first=S.prog.findIndex(x=>SEL.has(x.id)), last=lastSelIdx();
     sb.hidden=false;
-    sb.innerHTML=`<span class="lbl">Chord ${i+1}: <b>${sym(c)}</b></span>
-      <button class="btn small" data-a="left" ${i===0?'disabled':''}>◀ Move</button>
-      <button class="btn small" data-a="right" ${i===n-1?'disabled':''}>Move ▶</button>
+    sb.innerHTML=`<span class="lbl">${k>1?`<b>${k} chords</b> selected`:`Chord ${i+1}: <b>${sym(c)}</b>`}</span>
+      <button class="btn small" data-a="copy">Copy</button>
+      <button class="btn small" data-a="cut">Cut</button>
+      ${clipN?`<button class="btn small" data-a="paste">Paste ${clipN} after</button>`:''}
       <button class="btn small" data-a="dup">Duplicate</button>
+      <button class="btn small" data-a="left" ${first===0?'disabled':''}>◀ Move</button>
+      <button class="btn small" data-a="right" ${last===n-1?'disabled':''}>Move ▶</button>
       <button class="btn small" data-a="from">▶ Play from here</button>
       <button class="btn small danger" data-a="del">Delete</button>
       <span style="flex:1"></span>
       <button class="btn small" data-a="done">Done</button>`;
   } else { sb.hidden=true; sb.innerHTML=''; }
+  const pb=$('#pasteBtn'); pb.hidden=!clipN; pb.textContent=`Paste ${clipN} chord${clipN===1?'':'s'}`;
+  $('#multiBtn').classList.toggle('on',!!S.multi);
   $('#undoBtn').disabled=!hist.length; $('#redoBtn').disabled=!fut.length;
-  renderSaved();
+  renderDoc();
 }
 function pickState(){return selChord()||{root:S.pr,q:S.pq,bass:S.pb,beats:S.len};}
 function renderPicker(){
-  const c=pickState(), editing=!!selChord();
-  $('#pickTitle').innerHTML=editing?`Edit chord ${selIdx()+1}<span class="tag">editing</span>`:'New chord';
-  $('#pickBig').textContent=sym(c);
+  const c=pickState(), editing=!!selChord(), multi=SEL.size>1;
+  $('#pickTitle').innerHTML=multi?`Edit ${SEL.size} chords<span class="tag">editing</span>`:editing?`Edit chord ${selIdx()+1}<span class="tag">editing</span>`:'New chord';
+  $('#pickBig').textContent=multi?`${SEL.size} chords`:sym(c);
   const notes=Q[c.q].iv.map(i=>nm(c.root+i));
   $('#pickNotes').textContent=(hasBass(c)?nm(c.bass)+' (bass) · ':'')+notes.join(' · ');
   $('#lenSeg').innerHTML=[1,2,3,4,6,8].map(b=>`<button data-v="${b}" class="${c.beats===b?'on':''}">${b}</button>`).join('');
   $('#bassSel').innerHTML=`<option value="">Root</option>`+Array.from({length:12},(_,i)=>`<option value="${i}" ${hasBass(c)&&c.bass===i?'selected':''}>/${nm(i)}</option>`).join('');
   $('#addBtn').textContent=editing?'+ Add copy after':'+ Add';
+  if(multi) $('#pickNotes').textContent='Type and length apply to every selected chord. A root moves them all by the same interval.';
   $('#roots').innerHTML=Array.from({length:12},(_,i)=>{
     const pc=pcm(S.key+i), cl=['rb']; if(pc===c.root) cl.push('on'); if(i===0) cl.push('tonic'); else if(inScale(pc)) cl.push('in'); else cl.push('out');
     return `<button class="${cl.join(' ')}" data-pc="${pc}">${nm(pc)}</button>`;
@@ -784,10 +861,149 @@ function renderKey(){
   $('#dia').innerHTML=diatonic().map((c,i)=>{const ch={...c,bass:null}; return `<button class="db" data-i="${i}"><small>${roman(ch).t}</small><span>${sym(ch)}</span></button>`;}).join('');
   $('#temps').innerHTML=TEMPLATES.map((t,i)=>`<button class="chipbtn" data-t="${i}">${t[0]}</button>`).join('');
 }
-function renderSaved(){
-  const names=Object.keys(S.saved);
-  $('#savedList').innerHTML=names.length?names.map(n=>`<span class="s"><button data-load="${esc(n)}">${esc(n)}</button><button class="x" data-del="${esc(n)}" aria-label="Delete ${esc(n)}">×</button></span>`).join(''):'<span class="dim" style="font-size:13px">No saved progressions yet</span>';
+/* ---------- documents ---------- */
+function canon(o){
+  const d=o.dr;
+  return JSON.stringify({prog:(o.prog||[]).map(c=>[c.root,c.q,c.bass==null?null:c.bass,c.beats]),key:o.key,mode:o.mode,bpm:o.bpm,meter:o.meter,
+    dr:d?[d.on,d.style,d.base,d.swing,d.fills,d.vol,DGROUPS.map(([g])=>d.pres?d.pres[g]:0),Object.keys(d.mutes||{}).filter(k=>d.mutes[k]).sort(),DROWS.map(([r])=>d.grid&&d.grid[r]?d.grid[r]:[])]:null});
 }
+function curDoc(){return {prog:S.prog.map(({id,...c})=>c),key:S.key,mode:S.mode,bpm:S.bpm,meter:S.meter,dr:JSON.parse(JSON.stringify({...S.dr,open:false}))};}
+function isDirty(){
+  if(!S.cur) return S.prog.length>0;
+  const sv=S.saved[S.cur]; if(!sv) return true;
+  const a=curDoc(); if(!sv.dr) a.dr=null;
+  return canon(a)!==canon(sv);
+}
+function renderDoc(){
+  const d=isDirty();
+  $('#docName').textContent=S.cur||'Untitled';
+  const st=$('#docState'); st.classList.toggle('dirty',d);
+  st.textContent=S.cur?(d?'Unsaved changes':'Saved'):(S.prog.length?'Not saved yet':'');
+  st.title='Your current work is always kept in this browser, even before you save it.';
+  if(!$('#lib').hidden) renderLib();
+}
+function renderLib(){
+  const names=Object.keys(S.saved).sort((a,b)=>(S.saved[b].at||0)-(S.saved[a].at||0));
+  $('#lib').innerHTML=names.length?names.map(n=>{const v=S.saved[n]; const nb=(v.prog||[]).length;
+    return `<div class="li${n===S.cur?' cur':''}"><button class="o" data-open="${esc(n)}">${esc(n)}<small>${nb} chord${nb===1?'':'s'} · ${KEYN[v.key]||''} ${MODES[v.mode]?MODES[v.mode].n.split(' (')[0]:''}${n===S.cur?' · open now':''}</small></button><button class="d" data-delname="${esc(n)}" title="Delete “${esc(n)}”">Delete</button></div>`;}).join('')
+    :'<div class="none">Nothing saved yet. Use Save to keep this progression.</div>';
+}
+function dialog({title,text,input,value,buttons}){
+  return new Promise(res=>{
+    const ov=document.createElement('div'); ov.className='overlay';
+    ov.innerHTML=`<div class="dlg"><h3>${esc(title)}</h3>${text?`<p>${esc(text)}</p>`:''}${input?`<input class="txt" maxlength="40" placeholder="${esc(input)}">`:''}<div class="dbtns">${buttons.map((b,i)=>`<button class="btn small ${b.cls||''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+    document.body.appendChild(ov);
+    const inp=ov.querySelector('input'); if(inp){inp.value=value||''; setTimeout(()=>{inp.focus(); inp.select();},0);}
+    const done=v=>{document.removeEventListener('keydown',kd,true); ov.remove(); res(v);};
+    const val=b=>b.v===undefined?null:(inp&&b.v==='ok'?{v:'ok',text:inp.value.trim()}:b.v);
+    const kd=e=>{ if(e.key==='Escape'){e.preventDefault(); e.stopPropagation(); done(null);} else if(e.key==='Enter'){e.preventDefault(); e.stopPropagation(); const b=buttons.find(x=>x.cls&&x.cls.includes('primary')); done(b?val(b):null);} };
+    document.addEventListener('keydown',kd,true);
+    ov.onclick=e=>{ if(e.target===ov) done(null); const b=e.target.closest('[data-i]'); if(b) done(val(buttons[+b.dataset.i])); };
+  });
+}
+function writeSave(name){S.saved[name]={...curDoc(),at:Date.now()}; S.cur=name; persist(); renderDoc(); toast(`Saved “${name}”`);}
+async function saveAs(){
+  if(!S.prog.length){toast('Nothing to save yet'); return false;}
+  let def=S.cur?`${S.cur} (2)`:'';
+  while(true){
+    const r=await dialog({title:'Save as',text:'Saving under a new name never changes your other saved progressions.',input:'Name this progression',value:def,buttons:[{label:'Cancel'},{label:'Save',cls:'primary',v:'ok'}]});
+    if(!r) return false;
+    const name=r.text; if(!name){def=''; continue;}
+    if(S.saved[name]&&name!==S.cur){
+      const ok=await dialog({title:`Replace “${name}”?`,text:'A saved progression already has this name. Replacing it overwrites that one.',buttons:[{label:'Pick another name',v:'back'},{label:'Replace',cls:'danger',v:'yes'}]});
+      if(ok!=='yes'){def=name; if(ok===null) return false; continue;}
+    }
+    writeSave(name); return true;
+  }
+}
+async function save(){ if(!S.cur||!S.saved[S.cur]) return saveAs(); writeSave(S.cur); return true; }
+async function guardDirty(what){
+  if(!isDirty()) return true;
+  const r=await dialog({title:'Save your changes first?',text:`“${S.cur||'Untitled'}” has changes that aren’t saved. ${what}`,buttons:[{label:'Cancel'},{label:'Don’t save',v:'discard'},{label:'Save',cls:'primary',v:'save'}]});
+  if(r==='save') return await save();
+  return r==='discard';
+}
+async function newDoc(){
+  if(!await guardDirty('Starting a new progression will clear the chords on screen.')) return;
+  stop(); commit(()=>{S.prog=[]; S.cur=null; clearSel();}); toast('New progression — Undo brings the last one back');
+}
+async function openDoc(name){
+  const v=S.saved[name]; if(!v) return; $('#lib').hidden=true;
+  if(name===S.cur&&!isDirty()) return;
+  if(!await guardDirty(`Opening “${name}” replaces what’s on screen.`)) return;
+  stop();
+  commit(()=>{S.prog=v.prog.map(c=>({root:c.root,q:c.q,bass:c.bass==null?null:c.bass,beats:c.beats,id:uid()})); clearSel(); S.key=v.key; S.mode=v.mode; S.bpm=v.bpm; S.meter=v.meter; S.cur=name;
+    if(v.dr) S.dr={...JSON.parse(JSON.stringify(v.dr)),open:S.dr.open}; regrid();});
+  toast(`Opened “${name}”`);
+}
+async function deleteDoc(name){
+  const r=await dialog({title:`Delete “${name}”?`,text:name===S.cur?'The chords on screen stay put; they just won’t be saved under this name anymore.':'This removes it from your saved progressions. It can’t be undone.',buttons:[{label:'Cancel'},{label:'Delete',cls:'danger',v:'yes'}]});
+  if(r!=='yes') return;
+  delete S.saved[name]; if(S.cur===name) S.cur=null; persist(); renderDoc(); renderLib();
+}
+
+/* ---------- staff view ---------- */
+let staffPass='loop';
+function voicePlan(){
+  const p=S.prog;
+  const run=(last,vk)=>{const out=[]; for(const c of p){const key=c.root+'|'+c.q+'|'+c.bass; if(key!==vk){last=voiceUpper(upperPcs(c),last); vk=key;} out.push(last);} return {out,last,vk};};
+  const a=run(null,null);
+  if(!S.loop) return {v:a.out,diff:[]};
+  const b=run(a.last,a.vk), diff=[];
+  b.out.forEach((v,i)=>{if(v.join()!==a.out[i].join()) diff.push(i);});
+  return {v:staffPass==='first'?a.out:b.out,diff};
+}
+const LETTER={C:0,D:1,E:2,F:3,G:4,A:5,B:6};
+function spellM(m){const n=nm(m); return {step:(Math.floor(m/12)-1)*7+LETTER[n[0]],acc:n.slice(1),name:n+(Math.floor(m/12)-1)};}
+function renderStaff(){
+  const box=$('#staffSvg'), head=$('#staffHead'), note=$('#staffNote'), p=S.prog;
+  if(!p.length){head.innerHTML=''; box.innerHTML='<div class="empty" style="padding:28px;text-align:center;color:var(--muted)">Add some chords to see them on the staff.</div>'; note.textContent=''; return;}
+  const plan=voicePlan(), m=S.meter, T=p.reduce((a,c)=>a+c.beats,0);
+  head.innerHTML=`<span><i style="background:var(--text)"></i>Piano</span>${S.bass?'<span><i style="background:var(--good)"></i>Bass</span>':''}<span class="sp"></span>`+
+    (plan.diff.length?`<div class="seg" id="passSeg"><button data-v="first" class="${staffPass==='first'?'on':''}">First time</button><button data-v="loop" class="${staffPass==='loop'?'on':''}">On repeat</button></div>`:'');
+  const W=Math.max(320,box.clientWidth||strip.clientWidth||900), L=48, avail=W-L-10;
+  const bps=Math.max(1,Math.floor(avail/(m*34))), bw=avail/(bps*m), sysB=bps*m, nsys=Math.ceil(T/sysB), SH=172;
+  const starts=[]; let acc=0; for(const c of p){starts.push(acc); acc+=c.beats;}
+  let svg=`<svg width="${W}" height="${nsys*SH}" viewBox="0 0 ${W} ${nsys*SH}" xmlns="http://www.w3.org/2000/svg">`;
+  for(let k=0;k<nsys;k++){
+    const y0=k*SH, TT=y0+40, BT=TT+76, B0=k*sysB, B1=Math.min(T,B0+sysB), xEnd=L+(B1-B0)*bw;
+    const yT=s=>TT+(38-s)*4, yB=s=>BT+(26-s)*4;
+    for(let i=0;i<5;i++){svg+=`<line class="stl" x1="6" x2="${xEnd}" y1="${TT+i*8}" y2="${TT+i*8}"/><line class="stl" x1="6" x2="${xEnd}" y1="${BT+i*8}" y2="${BT+i*8}"/>`;}
+    svg+=`<line class="bar" x1="6" x2="6" y1="${TT}" y2="${BT+32}"/>`;
+    svg+=`<text class="clef" x="9" y="${TT+25}" font-size="34">𝄞</text><text class="clef" x="10" y="${BT+17}" font-size="26">𝄢</text>`;
+    svg+=`<text class="bnum" x="8" y="${TT-22}">${Math.floor(B0/m)+1}</text>`;
+    for(let b=Math.ceil((B0+1)/m)*m;b<=B1;b+=m){const x=L+(b-B0)*bw-2; svg+=`<line class="bar" x1="${x}" x2="${x}" y1="${TT}" y2="${BT+32}"/>`; if(b===T&&(!S.loop||true)) svg+=`<line class="bar" x1="${x-3}" x2="${x-3}" y1="${TT}" y2="${BT+32}"/>`;}
+    p.forEach((c,ci)=>{
+      const s0=starts[ci], s1=s0+c.beats; if(s1<=B0||s0>=B1) return;
+      const cont=s0<B0, a0=Math.max(s0,B0), x0=L+(a0-B0)*bw, w=(Math.min(s1,B1)-a0)*bw, nx=x0+24;
+      const up=plan.v[ci]||[], bm=S.bass?bassMidi(c):null;
+      const notes=up.map(mm=>({m:mm,bs:false})); if(bm!=null) notes.push({m:bm,bs:true});
+      const names=[]; let g='';
+      for(const staff of ['t','b']){
+        const ns=notes.filter(n=>(staff==='t')===(n.m>=60)).map(n=>({...n,...spellM(n.m)})).sort((a,b)=>a.step-b.step||a.m-b.m);
+        const Y=staff==='t'?yT:yB;
+        let prevStep=-99, prevOff=false;
+        ns.forEach(n=>{ n.off=(n.step-prevStep<=1&&!prevOff); prevOff=n.off; prevStep=n.step; });
+        const lg=new Set();
+        ns.forEach(n=>{ if(staff==='t'){ for(let l=28;l>=n.step;l-=2) lg.add(l); for(let l=40;l<=n.step;l+=2) lg.add(l);} else { for(let l=16;l>=n.step;l-=2) lg.add(l); for(let l=28;l<=n.step;l+=2) lg.add(l);} });
+        lg.forEach(l=>{ g+=`<line class="lg" x1="${nx-9}" x2="${nx+(ns.some(n=>n.off)?20:9)}" y1="${Y(l)}" y2="${Y(l)}"/>`; });
+        const accCols=[]; [...ns].reverse().forEach(n=>{ if(!n.acc) return; let col=0; while(accCols.some(a=>a.col===col&&Math.abs(a.step-n.step)<6)) col++; accCols.push({col,step:n.step}); g+=`<text class="acc${n.bs?' bs':''}" x="${nx-15-col*9}" y="${Y(n.step)+5}" text-anchor="middle">${n.acc}</text>`; });
+        ns.forEach(n=>{ g+=`<ellipse class="nh${n.bs?' bs':''}" cx="${nx+(n.off?11:0)}" cy="${Y(n.step)}" rx="5.6" ry="4" transform="rotate(-18 ${nx+(n.off?11:0)} ${Y(n.step)})"/>`; });
+      }
+      notes.slice().sort((a,b)=>a.m-b.m).forEach(n=>names.push((n.bs?'bass ':'')+spellM(n.m).name));
+      svg+=`<g class="sc${cont?' cont':''}" data-id="${c.id}"><title>${esc(sym(c))}: ${esc(names.join(' · '))}</title><rect class="hl" x="${x0-4}" y="${y0+4}" width="${w}" height="${SH-12}" rx="6"/><text class="sym" x="${x0+4}" y="${TT-22}">${cont?'('+sym(c)+')':sym(c)}</text>${g}</g>`;
+    });
+  }
+  svg+='</svg>';
+  box.innerHTML=svg;
+  const d=plan.diff;
+  note.textContent=S.loop&&d.length
+    ? (staffPass==='loop'?`Showing what you hear each time the loop repeats. The first time through, chord${d.length>1?'s':''} ${d.map(i=>i+1).join(', ')} ${d.length>1?'are':'is'} voiced differently, because nothing comes before ${d.length>1?'them':'it'}.`:`Showing the first time through. On repeat, chord${d.length>1?'s':''} ${d.map(i=>i+1).join(', ')} ${d.length>1?'change':'changes'} to lead smoothly out of the last chord.`)
+    : 'Each chord is voiced to move smoothly from the one before, so the same chord can sit differently depending on its neighbours. Hover a chord for its note names.';
+  const ps=$('#passSeg'); if(ps) ps.onclick=e=>{const b=e.target.closest('button'); if(!b) return; staffPass=b.dataset.v; renderStaff();};
+}
+let rsT=null; window.addEventListener('resize',()=>{clearTimeout(rsT); rsT=setTimeout(()=>{if(S.view==='staff') renderStaff();},120);});
+
 function presWord(g,p){
   if(g==='toms') return !p?'No fills':p<40?'1-beat fills':p<75?'2-beat fills':'Full-bar fills';
   return !p?'Off':p<34?'Sparse':p<67?'Normal':'Full';
@@ -824,33 +1040,53 @@ let toastT=null;
 function toast(msg){let el=$('.toast'); if(!el){el=document.createElement('div'); el.className='toast'; document.body.appendChild(el);} el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,2200);}
 
 /* ================= actions ================= */
-function insertChord(c,select){
-  const i=selIdx();
-  commit(()=>{ if(i>=0) S.prog.splice(i+1,0,c); else S.prog.push(c); if(select||i>=0) S.sel=c.id; });
+function insertMany(cs,select=true){
+  const i=lastSelIdx();
+  commit(()=>{ if(i>=0) S.prog.splice(i+1,0,...cs); else S.prog.push(...cs); if(select) setSel(cs.map(c=>c.id)); });
 }
+function insertChord(c,select){ insertMany([c], select||SEL.size>0); }
 function addPick(){
   const p=pickState(); const c={id:uid(),root:p.root,q:p.q,bass:hasBass(p)?p.bass:null,beats:p.beats};
-  insertChord(c, !!selChord()); preview(c);
+  insertChord(c, SEL.size>0); preview(c);
 }
 function editPick(fn){
-  const c=selChord();
-  if(c) commit(()=>fn(c));
+  if(SEL.size) commit(()=>selChords().forEach(fn));
   else { const o={root:S.pr,q:S.pq,bass:S.pb,beats:S.len}; fn(o); S.pr=o.root; S.pq=o.q; S.pb=o.bass; S.len=o.beats; persist(); renderPicker(); }
   return pickState();
 }
 function moveSel(d){
-  const i=selIdx(), j=i+d; if(i<0||j<0||j>=S.prog.length) return;
-  commit(()=>{const [c]=S.prog.splice(i,1); S.prog.splice(j,0,c);});
+  if(!SEL.size) return; const p=S.prog, first=p.findIndex(c=>SEL.has(c.id)), last=lastSelIdx();
+  if(d<0&&first>0) commit(()=>{const [x]=S.prog.splice(first-1,1); S.prog.splice(lastSelIdx()+1,0,x);});
+  if(d>0&&last<p.length-1) commit(()=>{const [x]=S.prog.splice(last+1,1); S.prog.splice(S.prog.findIndex(c=>SEL.has(c.id)),0,x);});
 }
-function stepSel(d){
+function stepSel(d,extend){
   if(!S.prog.length) return; let i=selIdx();
   i = i<0 ? (d>0?0:S.prog.length-1) : Math.max(0,Math.min(S.prog.length-1,i+d));
-  S.sel=S.prog[i].id; renderProg(); renderPicker();
+  const id=S.prog[i].id;
+  if(extend){ const a=S.prog.findIndex(c=>c.id===(ANCHOR||id)); const [lo,hi]=a<i?[a,i]:[i,a]; const keep=ANCHOR||id; setSel(S.prog.slice(lo,hi+1).map(c=>c.id),id); ANCHOR=keep; }
+  else setSel([id]);
+  renderProg(); renderPicker();
 }
 function delSel(){
-  const i=selIdx(); if(i<0) return;
-  commit(()=>{S.prog.splice(i,1); S.sel=S.prog.length?S.prog[Math.min(i,S.prog.length-1)].id:null;});
+  if(!SEL.size) return; const n=SEL.size, i=S.prog.findIndex(c=>SEL.has(c.id));
+  commit(()=>{S.prog=S.prog.filter(c=>!SEL.has(c.id)); if(n===1&&S.prog.length) setSel([S.prog[Math.min(i,S.prog.length-1)].id]); else clearSel();});
+  if(n>1) toast(`Deleted ${n} chords — Undo brings them back`);
 }
+function copySel(silent){
+  if(!SEL.size){toast('Select some chords first'); return false;}
+  const cs=selChords(); S.clip=cs.map(({id,...c})=>c); persist();
+  try{ navigator.clipboard.writeText(cs.map(sym).join('  ')).catch(()=>{}); }catch(e){}
+  if(!silent) toast(`Copied ${cs.length} chord${cs.length>1?'s':''} — paste here or into another progression`);
+  renderProg(); return true;
+}
+function cutSel(){ if(copySel(true)){ const n=SEL.size; delSel(); toast(`Cut ${n} chord${n>1?'s':''}`);} }
+function pasteClip(){
+  if(!S.clip||!S.clip.length){toast('Nothing copied yet'); return;}
+  const cs=S.clip.map(c=>({...c,id:uid()})); insertMany(cs,true);
+  toast(`Pasted ${cs.length} chord${cs.length>1?'s':''}`);
+}
+function dupSel(){ if(!SEL.size) return; insertMany(selChords().map(c=>({...c,id:uid()})),true); }
+function selectAll(){ if(!S.prog.length) return; setSel(S.prog.map(c=>c.id),S.prog[S.prog.length-1].id); ANCHOR=S.prog[0].id; renderProg(); renderPicker(); }
 function transpose(d){
   commit(()=>{S.prog.forEach(c=>{c.root=pcm(c.root+d); if(c.bass!=null) c.bass=pcm(c.bass+d);}); S.key=pcm(S.key+d);});
 }
@@ -865,22 +1101,22 @@ function chartText(){
 document.addEventListener('click',e=>{const b=e.target.closest('button'); if(b&&e.detail>0) b.blur();});
 $('#playBtn').onclick=toggle;
 $('#stopBtn').onclick=stop;
-$('#bpm').onchange=e=>{S.bpm=Math.max(40,Math.min(300,+e.target.value||110)); renderTop(); persist();};
-$('#bpmRange').oninput=e=>{S.bpm=+e.target.value; $('#bpm').value=S.bpm; persist();};
-$('#loopBtn').onclick=()=>{S.loop=!S.loop; renderTop(); persist();};
+$('#bpm').onchange=e=>{S.bpm=Math.max(40,Math.min(300,+e.target.value||110)); renderTop(); renderDoc(); persist();};
+$('#bpmRange').oninput=e=>{S.bpm=+e.target.value; $('#bpm').value=S.bpm; renderDoc(); persist();};
+$('#loopBtn').onclick=()=>{S.loop=!S.loop; renderTop(); if(S.view==='staff') renderStaff(); persist();};
 $('#metroBtn').onclick=()=>{S.metro=!S.metro; renderTop(); persist();};
-$('#bassBtn').onclick=()=>{S.bass=!S.bass; renderTop(); persist();};
+$('#bassBtn').onclick=()=>{S.bass=!S.bass; renderTop(); if(S.view==='staff') renderStaff(); persist();};
 $('#previewBtn').onclick=()=>{S.preview=!S.preview; renderTop(); persist();};
 $('#meterSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.meter=+b.dataset.v; regrid(); renderTop(); renderProg(); renderDrums(); persist();};
 $('#soundSel').onchange=e=>{S.sound=e.target.value; persist();};
 $('#feelSel').onchange=e=>{S.feel=e.target.value; persist();};
 $('#undoBtn').onclick=undo; $('#redoBtn').onclick=redo;
 $('#tDown').onclick=()=>transpose(-1); $('#tUp').onclick=()=>transpose(1);
-$('#clearBtn').onclick=()=>{ if(!S.prog.length) return; commit(()=>{S.prog=[]; S.sel=null;}); stop(); toast('Cleared — Undo brings it back'); };
+$('#clearBtn').onclick=()=>{ if(!S.prog.length) return; commit(()=>{S.prog=[]; clearSel();}); stop(); toast('Cleared — Undo brings it back'); };
 $('#copyBtn').onclick=async()=>{
   if(!S.prog.length){toast('Nothing to copy yet'); return;}
   const txt=chartText();
-  try{ await navigator.clipboard.writeText(txt); toast('Chart copied'); }
+  try{ await navigator.clipboard.writeText(txt); toast('Chart copied as text'); }
   catch(e){
     const ov=document.createElement('div'); ov.className='overlay';
     ov.innerHTML=`<div><h3>Chord chart</h3><textarea readonly></textarea><div style="text-align:right"><button class="btn small">Close</button></div></div>`;
@@ -888,30 +1124,33 @@ $('#copyBtn').onclick=async()=>{
     ov.onclick=ev=>{ if(ev.target===ov||ev.target.closest('button')) ov.remove(); };
   }
 };
-$('#saveBtn').onclick=()=>{
-  const name=$('#saveName').value.trim();
-  if(!name){toast('Give it a name first'); $('#saveName').focus(); return;}
-  if(!S.prog.length){toast('Nothing to save yet'); return;}
-  S.saved[name]={prog:JSON.parse(JSON.stringify(S.prog)),key:S.key,mode:S.mode,bpm:S.bpm,meter:S.meter,dr:JSON.parse(JSON.stringify({...S.dr,open:false}))};
-  $('#saveName').value=''; persist(); renderSaved(); toast(`Saved “${name}”`);
+$('#newBtn').onclick=newDoc;
+$('#saveBtn').onclick=save;
+$('#saveAsBtn').onclick=saveAs;
+$('#openBtn').onclick=e=>{e.stopPropagation(); const l=$('#lib'); l.hidden=!l.hidden; if(!l.hidden) renderLib();};
+$('#lib').onclick=e=>{
+  e.stopPropagation();
+  const o=e.target.closest('[data-open]'), d=e.target.closest('[data-delname]');
+  if(o) openDoc(o.dataset.open); else if(d) deleteDoc(d.dataset.delname);
 };
-$('#saveName').onkeydown=e=>{if(e.key==='Enter') $('#saveBtn').click();};
-$('#savedList').onclick=e=>{
-  const l=e.target.closest('[data-load]'), d=e.target.closest('[data-del]');
-  if(l){ const s=S.saved[l.dataset.load]; if(!s) return; stop();
-    commit(()=>{S.prog=s.prog.map(c=>({...c,id:uid()})); S.sel=null; S.key=s.key; S.mode=s.mode; S.bpm=s.bpm; S.meter=s.meter; if(s.dr) S.dr={...JSON.parse(JSON.stringify(s.dr)),open:S.dr.open}; regrid();}); toast(`Loaded “${l.dataset.load}”`); }
-  else if(d){ delete S.saved[d.dataset.del]; persist(); renderSaved(); }
-};
+document.addEventListener('click',e=>{ if(!e.target.closest('.libwrap')&&!e.target.closest('.overlay')) $('#lib').hidden=true; });
+$('#viewSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.view=b.dataset.v; persist(); renderProg();};
+$('#selAllBtn').onclick=selectAll;
+$('#multiBtn').onclick=()=>{S.multi=!S.multi; renderProg();};
+$('#pasteBtn').onclick=pasteClip;
 $('#selbar').onclick=e=>{
   const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a;
   if(a==='left') moveSel(-1); else if(a==='right') moveSel(1);
-  else if(a==='dup'){ const c=selChord(); insertChord({...c,id:uid()},true); }
-  else if(a==='from') jumpTo(S.sel);
+  else if(a==='copy') copySel(); else if(a==='cut') cutSel(); else if(a==='paste') pasteClip();
+  else if(a==='dup') dupSel();
+  else if(a==='from'){ const f=S.prog.find(c=>SEL.has(c.id)); if(f) jumpTo(f.id); }
   else if(a==='del') delSel();
-  else if(a==='done'){ S.sel=null; renderProg(); renderPicker(); }
+  else if(a==='done'){ clearSel(); renderProg(); renderPicker(); }
 };
 /* picker */
-$('#roots').onclick=e=>{const b=e.target.closest('[data-pc]'); if(!b) return; const pc=+b.dataset.pc; preview(editPick(c=>{c.root=pc; if(c.bass===pc) c.bass=null;}));};
+$('#roots').onclick=e=>{const b=e.target.closest('[data-pc]'); if(!b) return; const pc=+b.dataset.pc;
+  if(SEL.size>1){ const d=pc-selChord().root; if(!d) return; commit(()=>selChords().forEach(c=>{c.root=pcm(c.root+d); if(c.bass!=null) c.bass=pcm(c.bass+d);})); preview(selChord()); return; }
+  preview(editPick(c=>{c.root=pc; if(c.bass===pc) c.bass=null;}));};
 $('#qgroups').onclick=e=>{const b=e.target.closest('[data-q]'); if(!b) return; preview(editPick(c=>{c.q=b.dataset.q;}));};
 $('#lenSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; editPick(c=>{c.beats=+b.dataset.v;});};
 $('#bassSel').onchange=e=>{const v=e.target.value; preview(editPick(c=>{c.bass=v===''?null:+v;}));};
@@ -923,11 +1162,11 @@ $('#followSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S
 $('#kUndo').onclick=undo; $('#kRedo').onclick=redo;
 $('#spellSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.spell=b.dataset.v; persist(); renderAll();};
 $('#diaSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.dia7=b.dataset.v==='1'; persist(); renderKey();};
-$('#dia').onclick=e=>{const b=e.target.closest('[data-i]'); if(!b) return; const d=diatonic()[+b.dataset.i]; const c={id:uid(),root:d.root,q:d.q,bass:null,beats:S.len}; insertChord(c,!!selChord()); preview(c);};
+$('#dia').onclick=e=>{const b=e.target.closest('[data-i]'); if(!b) return; const d=diatonic()[+b.dataset.i]; const c={id:uid(),root:d.root,q:d.q,bass:null,beats:S.len}; insertChord(c,SEL.size>0); preview(c);};
 $('#temps').onclick=e=>{
   const b=e.target.closest('[data-t]'); if(!b) return; const [name,list]=TEMPLATES[+b.dataset.t];
   const cs=list.map(([iv,q,beats])=>({id:uid(),root:pcm(S.key+iv),q,bass:null,beats}));
-  const i=selIdx(); commit(()=>{ if(i>=0) S.prog.splice(i+1,0,...cs); else S.prog.push(...cs); });
+  insertMany(cs,SEL.size>0);
   toast(`Added ${name}`);
 };
 /* drums */
@@ -969,74 +1208,130 @@ window.addEventListener('pointermove',e=>{
 });
 window.addEventListener('pointerup',()=>{if(paint){paint=null; persist();}});
 
-/* strip: select, jump, drag */
-let drag=null, justDragged=false;
+/* strip: select, marquee, jump, drag */
+let drag=null, justDragged=false, marq=null;
 strip.addEventListener('click',e=>{
   if(justDragged) return;
   const card=e.target.closest('.cc');
-  if(!card){ if(S.sel){S.sel=null; renderProg(); renderPicker();} return; }
-  S.sel = S.sel===card.dataset.id ? null : card.dataset.id;
+  if(!card){ if(SEL.size){clearSel(); renderProg(); renderPicker();} return; }
+  const id=card.dataset.id;
+  if(e.shiftKey&&(ANCHOR||S.sel)){
+    const a=S.prog.findIndex(c=>c.id===(ANCHOR||S.sel)), b=S.prog.findIndex(c=>c.id===id), keep=ANCHOR||S.sel;
+    const [lo,hi]=a<b?[a,b]:[b,a]; setSel(S.prog.slice(lo,hi+1).map(c=>c.id),id); ANCHOR=keep;
+  } else if(e.metaKey||e.ctrlKey||S.multi){
+    const n=new Set(SEL); n.has(id)?n.delete(id):n.add(id); setSel([...n], n.has(id)?id:[...n].pop()); ANCHOR=id;
+  } else if(SEL.size===1&&SEL.has(id)) clearSel();
+  else setSel([id]);
   renderProg(); renderPicker();
-  if(S.sel) preview(selChord());
+  if(SEL.size===1&&SEL.has(id)) preview(selChord());
 });
-strip.addEventListener('dblclick',e=>{const card=e.target.closest('.cc'); if(card){ S.sel=card.dataset.id; renderProg(); renderPicker(); jumpTo(card.dataset.id);} });
+strip.addEventListener('dblclick',e=>{const card=e.target.closest('.cc'); if(card){ setSel([card.dataset.id]); renderProg(); renderPicker(); jumpTo(card.dataset.id);} });
 strip.addEventListener('pointerdown',e=>{
-  const card=e.target.closest('.cc'); if(!card||e.button>0) return;
-  drag={card,x0:e.clientX,y0:e.clientY,on:false,lock:0};
+  if(e.button>0) return;
+  const card=e.target.closest('.cc');
+  if(card){ drag={card,x0:e.clientX,y0:e.clientY,on:false,lock:0,alt:e.altKey}; return; }
+  if(e.pointerType==='touch') return;
+  marq={x0:e.clientX,y0:e.clientY,add:e.shiftKey||e.metaKey||e.ctrlKey,base:new Set(SEL),on:false,hits:[]};
 });
 function flip(fn){
-  const els=[...strip.children], first=new Map(els.map(el=>[el,el.getBoundingClientRect()]));
+  const els=[...strip.querySelectorAll('.cc')], first=new Map(els.map(el=>[el,el.getBoundingClientRect()]));
   fn();
-  for(const el of els){ const a=first.get(el), b=el.getBoundingClientRect(), dx=a.left-b.left, dy=a.top-b.top;
+  for(const el of els){ if(el.classList.contains('gone')) continue; const a=first.get(el), b=el.getBoundingClientRect(), dx=a.left-b.left, dy=a.top-b.top;
     if(dx||dy) el.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:160,easing:'cubic-bezier(.2,.7,.3,1)'}); }
 }
 window.addEventListener('pointermove',e=>{
+  if(marq){
+    if(!marq.on){ if(Math.hypot(e.clientX-marq.x0,e.clientY-marq.y0)<5) return; marq.on=true; marq.el=document.createElement('div'); marq.el.className='marq'; strip.appendChild(marq.el); document.body.classList.add('dragging'); }
+    const sr=strip.getBoundingClientRect(), x1=Math.min(marq.x0,e.clientX), x2=Math.max(marq.x0,e.clientX), y1=Math.min(marq.y0,e.clientY), y2=Math.max(marq.y0,e.clientY);
+    Object.assign(marq.el.style,{left:(x1-sr.left)+'px',top:(y1-sr.top)+'px',width:(x2-x1)+'px',height:(y2-y1)+'px'});
+    marq.hits=[];
+    strip.querySelectorAll('.cc').forEach(c=>{const r=c.getBoundingClientRect(), hit=r.right>x1&&r.left<x2&&r.bottom>y1&&r.top<y2; if(hit) marq.hits.push(c.dataset.id); c.classList.toggle('sel',hit||(marq.add&&marq.base.has(c.dataset.id)));});
+    return;
+  }
   if(!drag) return;
+  drag.alt=e.altKey;
   if(!drag.on){
     if(Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)<6) return;
-    drag.on=true; const r=drag.card.getBoundingClientRect();
-    drag.ox=drag.x0-r.left; drag.oy=drag.y0-r.top;
+    drag.on=true; const id=drag.card.dataset.id;
+    drag.fromSel=SEL.has(id);
+    drag.group=drag.fromSel&&SEL.size>1?S.prog.filter(c=>SEL.has(c.id)).map(c=>c.id):[id];
+    drag.gset=new Set(drag.group);
+    const r=drag.card.getBoundingClientRect(); drag.ox=drag.x0-r.left; drag.oy=drag.y0-r.top;
     const g=drag.card.cloneNode(true); g.classList.add('ghost'); g.classList.remove('sel','now'); g.style.width=r.width+'px'; g.style.height=r.height+'px';
-    document.body.appendChild(g); drag.ghost=g; drag.card.classList.add('placeholder'); document.body.classList.add('dragging');
+    if(drag.group.length>1){g.classList.add('multi'); g.querySelector('.idx').remove(); g.insertAdjacentHTML('beforeend',`<span class="gbadge">×${drag.group.length}</span>`);}
+    else g.insertAdjacentHTML('beforeend','<span class="gbadge" hidden></span>');
+    document.body.appendChild(g); drag.ghost=g; document.body.classList.add('dragging');
+    flip(()=>{ drag.card.classList.add('placeholder'); if(drag.group.length>1) strip.querySelectorAll('.cc').forEach(c=>{ if(c!==drag.card&&drag.gset.has(c.dataset.id)) c.classList.add('gone'); }); });
   }
   e.preventDefault();
+  const n=drag.group.length, gb=drag.ghost.querySelector('.gbadge');
+  drag.ghost.classList.toggle('copy',drag.alt); gb.hidden=n===1&&!drag.alt; gb.textContent=(drag.alt?'+ copy ':'')+(n>1?'×'+n:'');
   drag.ghost.style.transform=`translate(${e.clientX-drag.ox}px,${e.clientY-drag.oy}px) rotate(-1.5deg) scale(1.03)`;
   if(performance.now()<drag.lock) return;
   const x=e.clientX,y=e.clientY; let best=null,bd=1e9;
-  for(const c of strip.querySelectorAll('.cc')){ if(c===drag.card) continue;
+  for(const c of strip.querySelectorAll('.cc:not(.gone)')){ if(c===drag.card) continue;
     const r=c.getBoundingClientRect(), d=Math.max(r.left-x,0,x-r.right)+Math.max(r.top-y,0,y-r.bottom)*3;
     if(d<bd){bd=d;best=c;} }
   if(!best) return;
   const r=best.getBoundingClientRect(), before=x<r.left+r.width/2;
-  if(before && best.previousElementSibling===drag.card) return;
-  if(!before && best.nextElementSibling===drag.card) return;
+  const prev=n=>{let p=n.previousElementSibling; while(p&&p.classList.contains('gone')) p=p.previousElementSibling; return p;};
+  const next=n=>{let p=n.nextElementSibling; while(p&&p.classList.contains('gone')) p=p.nextElementSibling; return p;};
+  if(before && prev(best)===drag.card) return;
+  if(!before && next(best)===drag.card) return;
   flip(()=>strip.insertBefore(drag.card, before?best:best.nextSibling));
   drag.lock=performance.now()+170;
 },{passive:false});
-function endDrag(){
+function endPointer(e){
+  if(marq){
+    if(marq.on){
+      marq.el.remove(); document.body.classList.remove('dragging');
+      const ids=new Set(marq.hits); if(marq.add) marq.base.forEach(i=>ids.add(i));
+      const ordered=S.prog.filter(c=>ids.has(c.id)).map(c=>c.id);
+      if(ordered.length){ setSel(ordered, marq.hits.length?S.prog.filter(c=>marq.hits.includes(c.id)).pop().id:undefined); ANCHOR=ordered[0]; } else clearSel();
+      renderProg(); renderPicker();
+      justDragged=true; setTimeout(()=>justDragged=false,0);
+    }
+    marq=null; return;
+  }
   if(!drag) return;
   if(drag.on){
-    drag.ghost.remove(); drag.card.classList.remove('placeholder'); document.body.classList.remove('dragging');
-    const order=[...strip.querySelectorAll('.cc')].map(c=>c.dataset.id);
-    if(order.join()!==S.prog.map(c=>c.id).join()){ commit(()=>{const m=new Map(S.prog.map(c=>[c.id,c])); S.prog=order.map(id=>m.get(id));}); }
-    else renderProg();
+    drag.ghost.remove(); document.body.classList.remove('dragging');
+    const copy=!!(e&&e.altKey)||drag.alt;
+    const vis=[...strip.querySelectorAll('.cc:not(.gone)')], k=vis.indexOf(drag.card);
+    let nextId=null; for(let j=k+1;j<vis.length;j++){ if(!drag.gset.has(vis[j].dataset.id)){ nextId=vis[j].dataset.id; break; } }
+    const items=S.prog.filter(c=>drag.gset.has(c.id));
+    const base=copy?S.prog.slice():S.prog.filter(c=>!drag.gset.has(c.id));
+    const ins=copy?items.map(c=>({...c,id:uid()})):items;
+    let at=nextId?base.findIndex(c=>c.id===nextId):base.length; if(at<0) at=base.length;
+    const out=[...base.slice(0,at),...ins,...base.slice(at)];
+    if(out.map(c=>c.id).join()!==S.prog.map(c=>c.id).join()){
+      commit(()=>{ S.prog=out; if(copy||drag.fromSel) setSel(ins.map(c=>c.id)); });
+      if(copy) toast(`Copied ${ins.length} chord${ins.length>1?'s':''}`);
+    } else renderProg();
     justDragged=true; setTimeout(()=>justDragged=false,0);
   }
   drag=null;
 }
-window.addEventListener('pointerup',endDrag);
-window.addEventListener('pointercancel',endDrag);
+window.addEventListener('pointerup',endPointer);
+window.addEventListener('pointercancel',endPointer);
 /* keyboard */
 document.addEventListener('keydown',e=>{
   if(e.target.matches('input,select,textarea')) return;
   if(document.querySelector('.overlay')) return;
-  if(e.code==='Space'){e.preventDefault(); toggle();}
+  const mod=e.metaKey||e.ctrlKey, k=e.key.toLowerCase();
+  if(mod&&k==='c'){ if(SEL.size){e.preventDefault(); copySel();} }
+  else if(mod&&k==='x'){ if(SEL.size){e.preventDefault(); cutSel();} }
+  else if(mod&&k==='v'){ e.preventDefault(); pasteClip(); }
+  else if(mod&&k==='d'){ e.preventDefault(); dupSel(); }
+  else if(mod&&k==='a'){ e.preventDefault(); selectAll(); }
+  else if(mod&&k==='s'){ e.preventDefault(); e.shiftKey?saveAs():save(); }
+  else if(mod&&k==='z'){e.preventDefault(); e.shiftKey?redo():undo();}
+  else if(mod&&k==='y'){e.preventDefault(); redo();}
+  else if(e.code==='Space'){e.preventDefault(); toggle();}
   else if(e.key==='Enter'){e.preventDefault(); addPick();}
-  else if(e.key==='Escape'){S.sel=null; renderProg(); renderPicker();}
-  else if((e.key==='Backspace'||e.key==='Delete')&&S.sel){e.preventDefault(); delSel();}
-  else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault(); const d=e.key==='ArrowLeft'?-1:1; (e.shiftKey||e.altKey)?moveSel(d):stepSel(d);}
-  else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault(); e.shiftKey?redo():undo();}
-  else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='y'){e.preventDefault(); redo();}
+  else if(e.key==='Escape'){clearSel(); $('#lib').hidden=true; renderProg(); renderPicker();}
+  else if((e.key==='Backspace'||e.key==='Delete')&&SEL.size){e.preventDefault(); delSel();}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault(); const d=e.key==='ArrowLeft'?-1:1; e.altKey?moveSel(d):stepSel(d,e.shiftKey);}
 });
 
 renderAll();
