@@ -250,6 +250,18 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .gc span{display:block;font-family:var(--display);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gc small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--brass);white-space:nowrap;overflow:hidden}
 .gennote{font-size:12px;color:var(--dim);margin:8px 0 0}
+.lib .foot{display:flex;gap:6px;border-top:1px solid var(--line);margin-top:6px;padding:8px 4px 2px}
+.lib .foot button{flex:1;justify-content:center}
+.overlay .dlg.wide{max-width:600px}
+.xlist{display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto;border:1px solid var(--line2);border-radius:8px;padding:6px;background:var(--panel2)}
+.xlist label{display:flex;align-items:center;gap:8px;font-size:14px;padding:3px 4px;cursor:pointer}
+.xlist label small{color:var(--muted);font-size:12px;margin-left:auto}
+.xlist label.all{border-bottom:1px solid var(--line2);padding-bottom:6px;margin-bottom:2px;font-weight:500}
+.xlist input{accent-color:var(--brass)}
+.immsg{font-size:13px;margin:4px 0 0;min-height:18px}
+.immsg.ok{color:var(--good)} .immsg.err{color:var(--off)}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -923,6 +935,7 @@ function renderLib(){
   $('#lib').innerHTML=names.length?names.map(n=>{const v=S.saved[n]; const nb=(v.prog||[]).length;
     return `<div class="li${n===S.cur?' cur':''}"><button class="o" data-open="${esc(n)}">${esc(n)}<small>${nb} chord${nb===1?'':'s'} · ${KEYN[v.key]||''} ${MODES[v.mode]?MODES[v.mode].n.split(' (')[0]:''}${n===S.cur?' · open now':''}</small></button><button class="d" data-delname="${esc(n)}" title="Delete “${esc(n)}”">Delete</button></div>`;}).join('')
     :'<div class="none">Nothing saved yet. Use Save to keep this progression.</div>';
+  $('#lib').insertAdjacentHTML('beforeend',`<div class="foot"><button class="btn small" data-x="export" ${names.length?'':'disabled'}>⇡ Export…</button><button class="btn small" data-x="import">⇣ Import…</button></div>`);
 }
 function dialog({title,text,input,value,buttons}){
   return new Promise(res=>{
@@ -976,6 +989,108 @@ async function deleteDoc(name){
   const r=await dialog({title:`Delete “${name}”?`,text:name===S.cur?'The chords on screen stay put; they just won’t be saved under this name anymore.':'This removes it from your saved progressions. It can’t be undone.',buttons:[{label:'Cancel'},{label:'Delete',cls:'danger',v:'yes'}]});
   if(r!=='yes') return;
   delete S.saved[name]; if(S.cur===name) S.cur=null; persist(); renderDoc(); renderLib();
+}
+
+/* ---------- export / import ---------- */
+const clampN=(v,a,b,d)=>{v=+v; return Number.isFinite(v)?Math.max(a,Math.min(b,v)):d;};
+const isInt12=v=>Number.isInteger(v)&&v>=0&&v<12;
+function chartFor(v){const k=S.key,m=S.mode; S.key=v.key; S.mode=v.mode; const t=v.prog.map(c=>sym(c)+(c.beats!==4?`(${c.beats})`:'')).join(' '); S.key=k; S.mode=m; return t;}
+function exportData(names){
+  const progressions={};
+  for(const n of names){ const v=S.saved[n]; if(!v) continue;
+    progressions[n]={key:v.key,keyName:KEYN[v.key],mode:v.mode,bpm:v.bpm,meter:v.meter,chart:chartFor(v),
+      prog:v.prog.map(c=>({root:c.root,q:c.q,bass:c.bass==null?null:c.bass,beats:c.beats})),
+      ...(v.dr?{dr:{...JSON.parse(JSON.stringify(v.dr)),open:undefined}}:{}),savedAt:v.at?new Date(v.at).toISOString():undefined}; }
+  return JSON.stringify({app:'Changes',format:'changes-progressions',version:1,exported:new Date().toISOString(),progressions},null,2);
+}
+function sanitizeDoc(o){
+  if(!o||typeof o!=='object'||!Array.isArray(o.prog)) return null;
+  const prog=[];
+  for(const c of o.prog){
+    if(!c||typeof c!=='object') return null;
+    const root=+c.root, bass=c.bass==null?null:+c.bass;
+    if(!isInt12(root)||!Q[c.q]||(bass!==null&&!isInt12(bass))) return null;
+    prog.push({root,q:c.q,bass,beats:Math.round(clampN(c.beats,1,64,4))});
+  }
+  const out={prog,key:isInt12(+o.key)?+o.key:0,mode:MODES[o.mode]?o.mode:'ionian',bpm:Math.round(clampN(o.bpm,40,300,110)),meter:+o.meter===3?3:4,at:Date.parse(o.savedAt)||+o.at||Date.now()};
+  if(o.dr&&typeof o.dr==='object'){
+    const d=o.dr, base=DSTYLES[d.base]?d.base:(DSTYLES[d.style]?d.style:'swing'), L=out.meter*4;
+    const dr={on:d.on!==false,base,style:d.style==='custom'?'custom':base,swing:Math.round(clampN(d.swing,0,100,DSTYLES[base].sw)),
+      fills:['off','end','4','8'].includes(String(d.fills))?String(d.fills):'end',vol:Math.round(clampN(d.vol,0,100,75)),pres:{},mutes:{},open:false,grid:{}};
+    DGROUPS.forEach(([g])=>dr.pres[g]=Math.round(clampN(d.pres&&d.pres[g],0,100,DEF.dr.pres[g])));
+    DROWS.forEach(([r])=>{ if(d.mutes&&d.mutes[r]===true) dr.mutes[r]=true; });
+    const fresh=gridFor(base,out.meter);
+    DROWS.forEach(([r])=>{ const a=d.grid&&Array.isArray(d.grid[r])?d.grid[r]:null;
+      dr.grid[r]=a&&a.length?Array.from({length:L},(_,i)=>{const v=Math.round(+a[i%a.length]); return v>=0&&v<=3?v:0;}):(dr.style==='custom'?Array(L).fill(0):fresh[r]); });
+    out.dr=dr;
+  }
+  return out;
+}
+function parseImport(text){
+  let data; try{ data=JSON.parse(text); }catch(e){ return {err:'That isn’t valid JSON. Check that you copied the whole file.'}; }
+  let entries=[];
+  if(data&&typeof data==='object'&&!Array.isArray(data)&&data.progressions&&typeof data.progressions==='object') entries=Object.entries(data.progressions);
+  else if(Array.isArray(data)) entries=data.map((o,i)=>[o&&o.name||`Imported ${i+1}`,o]);
+  else if(data&&data.prog) entries=[[data.name||'Imported',data]];
+  else return {err:'No progressions found. Use a file exported from Changes.'};
+  const ok=[]; let bad=0;
+  for(const [n,o] of entries){ const name=String(n||'').trim().slice(0,40)||'Imported'; const d=sanitizeDoc(o); d?ok.push([name,d]):bad++; }
+  if(!ok.length) return {err:`None of the ${entries.length} entr${entries.length===1?'y':'ies'} could be read.`};
+  return {ok,bad};
+}
+function uniqueName(n){ if(!S.saved[n]) return n; let i=2; while(S.saved[`${n} (${i})`]) i++; return `${n} (${i})`; }
+function overlay(html){ const ov=document.createElement('div'); ov.className='overlay'; ov.innerHTML=`<div class="dlg wide">${html}</div>`; document.body.appendChild(ov);
+  const close=()=>{document.removeEventListener('keydown',kd,true); ov.remove();}; const kd=e=>{ if(e.key==='Escape'){e.stopPropagation(); close();} };
+  document.addEventListener('keydown',kd,true); ov.addEventListener('click',e=>{ if(e.target===ov) close(); }); return {ov,close}; }
+function exportDialog(){
+  const names=Object.keys(S.saved).sort((a,b)=>(S.saved[b].at||0)-(S.saved[a].at||0));
+  if(!names.length){toast('Save a progression first'); return;}
+  const framed=window.self!==window.top;
+  const {ov,close}=overlay(`<h3>Export progressions</h3><p>Choose what to include. The JSON can be imported into Changes on any device or browser.</p>
+    <div class="xlist"><label class="all"><input type="checkbox" id="xAll" checked> All saved progressions <small>${names.length}</small></label>
+    ${names.map(n=>`<label><input type="checkbox" class="xi" value="${esc(n)}" checked> ${esc(n)} <small>${S.saved[n].prog.length} chords</small></label>`).join('')}</div>
+    <textarea readonly id="xTxt" style="min-height:150px"></textarea>
+    <div class="dbtns"><button class="btn small" data-c>Close</button><button class="btn small" id="xDl">Download .json</button><button class="btn small primary" id="xCopy">Copy JSON</button></div>
+    <p class="hint" style="margin-top:8px">${framed?'Downloads may be blocked inside the Claude viewer. If nothing downloads, use Copy JSON and paste it into a file, or export from your GitHub Pages site.':''}</p>`);
+  const sel=()=>[...ov.querySelectorAll('.xi:checked')].map(i=>i.value);
+  const upd=()=>{ const s=sel(); ov.querySelector('#xTxt').value=s.length?exportData(s):''; ov.querySelector('#xAll').checked=s.length===names.length; ov.querySelector('#xCopy').disabled=ov.querySelector('#xDl').disabled=!s.length; };
+  ov.querySelector('#xAll').onchange=e=>{ ov.querySelectorAll('.xi').forEach(i=>i.checked=e.target.checked); upd(); };
+  ov.querySelectorAll('.xi').forEach(i=>i.onchange=upd); upd();
+  ov.querySelector('[data-c]').onclick=close;
+  ov.querySelector('#xCopy').onclick=async()=>{ const t=ov.querySelector('#xTxt'); try{ await navigator.clipboard.writeText(t.value); toast(`Copied ${sel().length} progression${sel().length>1?'s':''} as JSON`); }catch(e){ t.focus(); t.select(); toast('Press Ctrl/⌘+C to copy the selected text'); } };
+  ov.querySelector('#xDl').onclick=()=>{ try{ const blob=new Blob([ov.querySelector('#xTxt').value],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download=`changes-progressions-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); }catch(e){ toast('Download isn’t available here — use Copy JSON'); } };
+}
+function importDialog(){
+  const {ov,close}=overlay(`<h3>Import progressions</h3><p>Choose a .json file exported from Changes, or paste its contents. Imported progressions are added to your saved list; what’s on screen isn’t touched.</p>
+    <div class="genrow"><span class="btn small filebtn">Choose file…<input type="file" id="iFile" accept=".json,application/json,text/plain"></span><span class="muted" id="iFname" style="font-size:13px"></span></div>
+    <textarea id="iTxt" placeholder="…or paste JSON here" style="min-height:140px"></textarea>
+    <p class="immsg" id="iMsg"></p>
+    <div class="dbtns"><button class="btn small" data-c>Cancel</button><button class="btn small primary" id="iGo" disabled>Import</button></div>`);
+  const txt=ov.querySelector('#iTxt'), msg=ov.querySelector('#iMsg'), go=ov.querySelector('#iGo'); let parsed=null;
+  const check=()=>{ const t=txt.value.trim(); parsed=null; go.disabled=true; msg.className='immsg'; msg.textContent='';
+    if(!t) return; const r=parseImport(t);
+    if(r.err){ msg.className='immsg err'; msg.textContent=r.err; return; }
+    parsed=r; go.disabled=false; const names=r.ok.map(x=>x[0]); const clash=names.filter(n=>S.saved[n]).length;
+    msg.className='immsg ok'; msg.textContent=`Found ${r.ok.length} progression${r.ok.length>1?'s':''}: ${names.slice(0,6).join(', ')}${names.length>6?'…':''}`+(r.bad?` (${r.bad} couldn’t be read and will be skipped)`:'')+(clash?`. ${clash} already exist${clash===1?'s':''}; you’ll choose what to do next.`:'');
+    go.textContent=`Import ${r.ok.length}`; };
+  txt.oninput=check;
+  ov.querySelector('#iFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; ov.querySelector('#iFname').textContent=f.name;
+    if(f.size>5e6){ msg.className='immsg err'; msg.textContent='That file is too large to be a Changes export.'; return; }
+    const rd=new FileReader(); rd.onload=()=>{ txt.value=rd.result; check(); }; rd.readAsText(f); };
+  ov.querySelector('[data-c]').onclick=close;
+  go.onclick=async()=>{
+    if(!parsed) return; const items=parsed.ok; close();
+    const clashes=items.filter(([n])=>S.saved[n]).map(([n])=>n);
+    let mode='keep';
+    if(clashes.length){
+      const r=await dialog({title:`${clashes.length} name${clashes.length>1?'s are':' is'} already taken`,text:`${clashes.slice(0,5).join(', ')}${clashes.length>5?'…':''}. Keep both adds the imported one${clashes.length>1?'s':''} with a number after the name. Replace overwrites your saved version.`,
+        buttons:[{label:'Cancel'},{label:'Replace',cls:'danger',v:'replace'},{label:'Keep both',cls:'primary',v:'keep'}]});
+      if(!r) return; mode=r;
+    }
+    let n=0; for(const [name,d] of items){ const nm2=mode==='replace'?name:uniqueName(name); S.saved[nm2]=d; n++; }
+    persist(); renderDoc(); toast(`Imported ${n} progression${n>1?'s':''}. Find ${n>1?'them':'it'} under Open.`);
+  };
 }
 
 /* ---------- staff view ---------- */
@@ -1321,8 +1436,9 @@ $('#saveAsBtn').onclick=saveAs;
 $('#openBtn').onclick=e=>{e.stopPropagation(); const l=$('#lib'); l.hidden=!l.hidden; if(!l.hidden) renderLib();};
 $('#lib').onclick=e=>{
   e.stopPropagation();
-  const o=e.target.closest('[data-open]'), d=e.target.closest('[data-delname]');
+  const o=e.target.closest('[data-open]'), d=e.target.closest('[data-delname]'), x=e.target.closest('[data-x]');
   if(o) openDoc(o.dataset.open); else if(d) deleteDoc(d.dataset.delname);
+  else if(x){ $('#lib').hidden=true; x.dataset.x==='export'?exportDialog():importDialog(); }
 };
 document.addEventListener('click',e=>{ if(!e.target.closest('.libwrap')&&!e.target.closest('.overlay')) $('#lib').hidden=true; });
 $('#viewSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.view=b.dataset.v; persist(); renderProg();};
