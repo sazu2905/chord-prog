@@ -14,7 +14,8 @@ Open `index.html` in a browser. Everything is in that one file (HTML, CSS, JavaS
 - **Multi-select:** box-select by dragging across empty space, Shift-click ranges, Ctrl/⌘-click to toggle (or the Multi-select toggle on touch). Copy, cut, paste and duplicate whole sections, including between saved progressions. Drag a selection to move it; hold Alt while dropping to copy it. Type and length edits apply to every selected chord.
 - **Files:** New, Save, Save as… and Open, with an unsaved-changes indicator and a prompt before anything on screen would be replaced.
 - **Staff view:** a read-only grand staff showing the exact piano voicing and bass note played for every chord, highlighted during playback, with a First time / On repeat switch where voice leading voices the loop differently.
-- **Drums:** 8 styles, presence sliders for kick, snare, hats, cymbals and toms, auto fills, swing, and an expandable 16-step sequencer with accents and ghost notes.
+- **Drums:** 8 styles, presence sliders for kick, snare, hats, cymbals and toms, auto fills, swing, and an expandable 16-step sequencer with accents and ghost notes. The panel collapses to a single line so the beat can keep running out of the way.
+- **Inspire me:** generates a random 8-bar progression in the current key in a chosen style (jazz standard, bossa nova, neo-soul, gospel, 8-bar blues, pop, modal vamp, or surprise me). Audition it, then start a new progression from it or insert it into the current one.
 
 ## Keyboard
 

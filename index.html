@@ -231,6 +231,25 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .clef{fill:var(--muted);font-family:"Noto Music","Apple Symbols","Segoe UI Symbol",serif}
 .bnum{font:10px var(--mono);fill:var(--dim)}
 .staffnote{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
+.fold{background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px;width:26px;height:26px;border-radius:6px;padding:0;transition:transform .15s}
+.fold:hover{color:var(--text);background:var(--panel2)}
+.drums.folded .fold{transform:rotate(-90deg)}
+.drums #drTitle{cursor:pointer}
+.drums.folded .mixer,.drums.folded #drExpand,.drums.folded #drGridWrap,.drums.folded .drx{display:none!important}
+.drums.folded .phead{margin-bottom:0}
+.drsum{font-size:12.5px;color:var(--muted)}
+.drums:not(.folded) .drsum{display:none}
+.gen{background:#0b1019;border:1px solid var(--line);border-radius:12px;padding:12px}
+.genrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.genrow select{flex:1;min-width:150px}
+.genout{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:4px;margin:12px 0 10px;min-height:44px}
+.genout .dim{grid-column:1/-1;align-self:center;font-size:13px}
+.gc{grid-column:span var(--beats);background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:5px 6px;cursor:pointer;text-align:left;color:var(--text);min-width:0;overflow:hidden}
+.gc:hover{border-color:#47557a}
+.gc.on{border-color:var(--good);background:rgba(94,196,182,.12)}
+.gc span{display:block;font-family:var(--display);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--brass);white-space:nowrap;overflow:hidden}
+.gennote{font-size:12px;color:var(--dim);margin:8px 0 0}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -304,13 +323,15 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 
   <section class="card drums" id="drumCard">
     <div class="phead">
-      <h2>Drums</h2>
+      <button class="fold" id="drFold" aria-label="Collapse drums">▾</button>
+      <h2 id="drTitle">Drums</h2>
       <button class="chipbtn" id="drOn">On</button>
       <select id="drStyle" aria-label="Drum style"></select>
+      <span class="drsum" id="drSum"></span>
       <span class="sp"></span>
-      <label class="mini">Swing <input type="range" id="drSwing" min="0" max="100"><span class="mono" id="drSwingV"></span></label>
-      <label class="mini">Fills <select id="drFills"><option value="off">Off</option><option value="end">End of loop</option><option value="4">Every 4 bars</option><option value="8">Every 8 bars</option></select></label>
-      <label class="mini">Volume <input type="range" id="drVol" min="0" max="100"></label>
+      <label class="mini drx">Swing <input type="range" id="drSwing" min="0" max="100"><span class="mono" id="drSwingV"></span></label>
+      <label class="mini drx">Fills <select id="drFills"><option value="off">Off</option><option value="end">End of loop</option><option value="4">Every 4 bars</option><option value="8">Every 8 bars</option></select></label>
+      <label class="mini drx">Volume <input type="range" id="drVol" min="0" max="100"></label>
     </div>
     <div class="mixer" id="drMix"></div>
     <button class="disclosure" id="drExpand"></button>
@@ -371,6 +392,20 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
       <div class="dia" id="dia"></div>
       <h4>Starters <span style="text-transform:none;letter-spacing:0" class="dim">— added in the current key</span></h4>
       <div class="temps" id="temps"></div>
+      <h4>Inspire me <span style="text-transform:none;letter-spacing:0" class="dim">— a random 8 bars in this key</span></h4>
+      <div class="gen">
+        <div class="genrow">
+          <select id="genStyle" aria-label="Style"></select>
+          <button class="btn primary small" id="genBtn">🎲 Generate</button>
+        </div>
+        <div class="genout" id="genOut"></div>
+        <div class="genrow" id="genActs" hidden>
+          <button class="btn small" id="genHear">▶ Hear it</button>
+          <button class="btn small" id="genNew">Start new progression</button>
+          <button class="btn small" id="genIns">Insert into current</button>
+        </div>
+        <p class="gennote" id="genNote"></p>
+      </div>
     </section>
   </div>
 </main>
@@ -452,7 +487,7 @@ const pcm=n=>((n%12)+12)%12;
 
 /* ================= state ================= */
 const LS='changes.v1';
-const DEF={prog:[],key:0,mode:'ionian',spell:'auto',pr:2,pq:'m7',pb:null,len:4,bpm:110,meter:4,loop:true,metro:false,bass:true,sound:'keys',feel:'held',dia7:true,saved:{},preview:true,follow:true,cur:null,clip:null,view:'chords',
+const DEF={prog:[],key:0,mode:'ionian',spell:'auto',pr:2,pq:'m7',pb:null,len:4,bpm:110,meter:4,loop:true,metro:false,bass:true,sound:'keys',feel:'held',dia7:true,saved:{},preview:true,follow:true,cur:null,clip:null,view:'chords',drFold:false,genStyle:'jazz',
   dr:{on:true,base:'swing',style:'swing',swing:66,fills:'end',vol:75,pres:{kick:45,snare:45,hats:60,cym:65,toms:40},mutes:{},open:false,grid:null}};
 let S=Object.assign({},DEF);
 try{const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d) S=Object.assign(S,d);}catch(e){}
@@ -695,6 +730,7 @@ function scheduleDrums(t,spb,lb,T){
 const P={playing:false,id:null,idx:0,beat:0,g:0,next:0,timer:null,events:[],resume:false,lastV:null,voice:null,vkey:null,ending:false};
 function toggle(){P.playing?pause():play();}
 function play(){
+  stopAud();
   if(!S.prog.length){toast('Add a chord first'); return;}
   ensureAudio(); P.playing=true; P.ending=false; P.resume=true; P.next=ctx.currentTime+.08;
   P.timer=setInterval(tick,25); tick(); renderTop();
@@ -1016,6 +1052,9 @@ function renderStyleSel(){
 function renderDrums(){
   const D=S.dr;
   $('#drOn').classList.toggle('on',D.on); $('#drOn').textContent=D.on?'On':'Off';
+  $('#drumCard').classList.toggle('folded',!!S.drFold);
+  $('#drFold').setAttribute('aria-label',S.drFold?'Expand drums':'Collapse drums');
+  $('#drSum').textContent=D.on?`swing ${D.swing}% · fills ${({off:'off',end:'end of loop','4':'every 4 bars','8':'every 8 bars'})[D.fills]}`:'';
   $('#drumCard').classList.toggle('off',!D.on);
   renderStyleSel();
   $('#drSwing').value=D.swing; $('#drSwingV').textContent=D.swing+'%'; $('#drVol').value=D.vol; $('#drFills').value=D.fills;
@@ -1034,7 +1073,7 @@ function renderGrid(){
   }
   const el=$('#drGrid'); el.style.setProperty('--steps',L); el.innerHTML=h; UI.step=null;
 }
-function renderAll(){renderTop(); renderProg(); renderPicker(); renderKey(); renderDrums();}
+function renderAll(){renderTop(); renderProg(); renderPicker(); renderKey(); renderDrums(); if(typeof renderGen==='function'&&document.getElementById('genOut')) renderGen();}
 
 let toastT=null;
 function toast(msg){let el=$('.toast'); if(!el){el=document.createElement('div'); el.className='toast'; document.body.appendChild(el);} el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,2200);}
@@ -1097,6 +1136,158 @@ function chartText(){
   return `${KEYN[S.key]} ${MODES[S.mode].n} · ${S.bpm} bpm · ${m}/4\n${out.trim()}`;
 }
 
+/* ================= generator ================= */
+/* cells: "interval quality beats [/bassInterval]" in 4/4 beats; each slot is 2 bars */
+const GEN_STYLES={
+  jazz:{n:'Jazz standard',col:'jazz',
+    maj:[["0 maj7 8","0 maj7 4, 9 m7 4","0 maj7 4, 9 7 4","4 m7 4, 9 7 4","0 6 4, 1 dim7 4","2 m7 4, 7 7 4"],
+         ["2 m7 4, 7 7 4","2 m7 8","4 m7 4, 3 dim7 4","9 7 4, 2 m7 4","2 m7 4, 1 7 4","0 maj7 4, 0 7 4"],
+         ["5 maj7 8","5 maj7 4, 5 m7 2, 10 7 2","5 maj7 4, 6 m7b5 2, 11 7 2","4 m7 4, 9 7 4","5 maj7 4, 10 7 4","2 m7 4, 7 7 4"],
+         ["2 m7 4, 7 7 4","0 maj7 2, 9 m7 2, 2 m7 2, 7 7 2","4 m7 2, 3 m7 2, 2 m7 2, 1 7 2","0 maj7 4, 7 7 4","4 m7 2, 9 7 2, 2 m7 2, 7 7 2","2 m7 4, 1 7 4"]],
+    min:[["0 m7 8","0 m6 8","0 mmaj7 4, 0 m7 4","0 m7 4, 5 m7 4","0 m6 4, 8 maj7 4"],
+         ["2 m7b5 4, 7 7 4","5 m7 4, 10 7 4","8 maj7 4, 7 7 4","5 m7 8","0 m7 4, 0 7 4"],
+         ["5 m7 8","5 m7 4, 10 7 4","8 maj7 4, 1 maj7 4","3 maj7 4, 8 maj7 4","8 7 4, 7 7 4"],
+         ["2 m7b5 4, 7 7 4","0 m7 2, 8 7 2, 2 m7b5 2, 7 7 2","8 7 4, 7 7 4","2 m7b5 2, 7 7 2, 0 m7 4"]]},
+  bossa:{n:'Bossa nova',col:'bossa',
+    maj:[["0 maj7 8","0 maj7 8","2 m7 4, 7 7 4"],
+         ["2 7 8","2 m7 4, 7 7 4","1 7 8","9 7 8"],
+         ["2 m7 4, 7 7 4","5 maj7 8","5 m7 4, 10 7 4","4 m7 4, 9 7 4"],
+         ["2 m7 4, 1 7 4","0 maj7 4, 9 7 4","2 m7 4, 7 7 4","1 maj7 8"]],
+    min:[["0 m7 8","0 m6 8"],
+         ["5 m7 8","2 m7b5 4, 7 7 4","0 m7 4, 0 7 4"],
+         ["5 m7 8","10 7 8","8 maj7 8","3 maj7 4, 8 maj7 4"],
+         ["2 m7b5 4, 7 7 4","8 7 4, 7 7 4","1 maj7 8"]]},
+  neosoul:{n:'Neo-soul',col:'neo',
+    maj:[["0 maj7 4, 4 m7 4","5 maj7 4, 4 m7 4","0 maj7 4, 9 m7 4"],
+         ["9 m7 4, 2 m7 4","3 maj7 4, 8 maj7 4","2 m7 4, 1 maj7 4","4 m7 4, 9 m7 4"],
+         ["5 maj7 4, 5 m7 4","5 maj7 4, 4 m7 4","8 maj7 4, 10 7 4","5 maj7 8"],
+         ["2 m7 4, 7 7sus4 4","2 m7 4, 1 maj7 4","5 m7 4, 10 7 4","8 maj7 4, 7 7sus4 4"]],
+    min:[["0 m7 8","0 m7 4, 5 m7 4"],
+         ["3 maj7 4, 5 m7 4","8 maj7 4, 7 m7 4","10 7 4, 3 maj7 4"],
+         ["5 m7 4, 10 7 4","8 maj7 8","1 maj7 4, 0 m7 4"],
+         ["8 maj7 4, 7 7 4","2 m7b5 4, 7 7 4","5 m7 4, 8 maj7 4"]]},
+  gospel:{n:'Gospel',col:'gospel',
+    maj:[["0 maj 4, 5 maj 4 /0","0 maj7 4, 4 m7 2, 9 7 2","0 maj 4, 0 7 4"],
+         ["5 maj7 4, 6 dim7 4","5 maj 4, 5 m6 4","4 m7 2, 9 7 2, 2 m7 4"],
+         ["0 maj 4 /7, 9 7 4","4 7 4, 9 m7 4","5 maj 4, 6 dim7 4"],
+         ["2 m7 4, 7 7sus4 2, 7 7 2","2 m7 2, 7 7 2, 0 maj 4","5 maj 2, 6 dim7 2, 0 maj 2 /7, 7 7sus4 2"]]},
+  blues:{n:'8-bar blues',col:'blues',
+    forms:["0 7 4, 5 7 4, 0 7 4, 9 7 4, 2 m7 4, 7 7 4, 0 7 2, 9 7 2, 2 m7 2, 7 7 2",
+           "0 7 4, 7 7 4, 5 7 8, 0 7 4, 7 7 4, 0 7 2, 5 7 2, 0 7 2, 7 7 2",
+           "0 7 4, 5 7 4, 0 7 4, 7 m7 2, 0 7 2, 5 7 4, 6 dim7 4, 0 7 2, 9 7 2, 2 m7 2, 7 7 2"],
+    minForms:["0 m7 4, 5 m7 4, 0 m7 8, 8 7 4, 7 7 4, 0 m7 2, 8 7 2, 2 m7b5 2, 7 7 2",
+              "0 m7 8, 5 m7 8, 8 7 4, 7 7 4, 0 m7 4, 7 7 4"]},
+  pop:{n:'Pop / singer-songwriter',col:'pop'},
+  modal:{n:'Modal vamp (uses the mode)',col:'modal'},
+};
+const COLORS={
+  jazz:{maj7:{maj7:3,maj9:3,'6':1,'69':2},m7:{m7:3,m9:3,m11:1},'7':{'7':2,'9':2,'13':3,'7b9':1,'7alt':1}},
+  bossa:{maj7:{maj9:3,'69':2,'maj7#11':1},m7:{m9:3,m7:1,m11:1},'7':{'13':3,'9':2,'7#11':2,'7b9':1},m6:{m6:2,m9:1}},
+  neo:{maj7:{maj9:4,'maj7#11':1,maj13:1},m7:{m9:3,m11:3},'7':{'9sus4':1,'13':2,'7#9':1,'9':1},'7sus4':{'9sus4':2,'7sus4':1}},
+  gospel:{maj:{maj:3,add9:1,'69':1},maj7:{maj7:1,maj9:1,'69':1},m7:{m7:2,m9:1,m11:1},'7':{'7':1,'9':1,'13':2},'7sus4':{'7sus4':1,'9sus4':1}},
+  blues:{'7':{'7':2,'9':2,'13':2,'7#9':1},m7:{m7:2,m9:1,m11:1}},
+  pop:{maj:{maj:5,add9:2,sus2:1},m:{m:5,m7:2}},
+  modal:{maj7:{maj9:3,maj7:1,'69':1},m7:{m9:3,m11:2,m7:1},'7':{'13':2,'9sus4':2,'9':1}},
+};
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function pickW(w){const e=Object.entries(w); let r=Math.random()*e.reduce((a,[,x])=>a+x,0); for(const [k,x] of e){r-=x; if(r<0) return k;} return e[0][0];}
+function parseCells(str){return str.split(',').map(t=>{const p=t.trim().split(/\s+/); return {iv:+p[0],q:p[1],beats:+p[2],bass:p[3]?+p[3].slice(1):null};});}
+const isMinorMode=()=>{const iv=MODES[S.mode].iv; return iv.includes(3)&&!iv.includes(4);};
+function genPop(minor){
+  const sc=minor?[0,2,3,5,7,8,10]:MAJ, tri=minor?['m','dim','maj','m','m','maj','maj']:['maj','m','m','maj','maj','m','dim'];
+  const loop=rnd(minor?[[0,5,2,6],[0,6,5,6],[0,3,5,6],[5,6,0,0],[0,5,3,4]]:[[0,4,5,3],[5,3,0,4],[0,5,3,4],[0,3,5,4],[3,0,4,5],[0,2,3,4]]);
+  const ch=d=>({iv:sc[d],q:(minor&&d===4&&Math.random()<.6)?'maj':tri[d],beats:8,bass:null});
+  if(Math.random()<.45) return loop.map(ch);
+  const a=loop.map(d=>({...ch(d),beats:4})), b=a.map(x=>({...x})), v=Math.random(), L=b[3];
+  if(v<.4&&L.q==='maj') b.splice(3,1,{...L,q:'sus4',beats:2},{...L,beats:2});
+  else if(v<.7) b[3]={iv:7,q:minor&&Math.random()<.4?'m':'maj',beats:4,bass:null};
+  return [...a,...b];
+}
+function genModal(){
+  const sc=MODES[S.mode].iv;
+  const ch=d=>{const r=sc[d], t=pcm(sc[(d+2)%7]-r), f=pcm(sc[(d+4)%7]-r), s7=pcm(sc[(d+6)%7]-r); return {iv:r,q:SEV[`${t},${f},${s7}`]||TRI[`${t},${f}`]||'maj',bass:null};};
+  const CHAR={ionian:3,dorian:3,phrygian:1,lydian:1,mixolydian:6,aeolian:5,locrian:1,harmonic:4,melodic:3}[S.mode];
+  const others=[1,2,3,4,5,6].filter(d=>d!==CHAR&&ch(d).q!=='m7b5'&&ch(d).q!=='dim7');
+  const o=rnd(others), o2=rnd(others);
+  const pat=rnd([[[0,8],[CHAR,8],[0,8],[o,8]],[[0,16],[CHAR,8],[o,8]],[[0,4],[CHAR,4],[0,4],[CHAR,4],[0,4],[CHAR,4],[o,4],[o2,4]],[[0,8],[CHAR,4],[o,4],[0,8],[CHAR,8]]]);
+  const cells=pat.map(([d,b])=>({...ch(d),beats:b}));
+  if(S.mode==='lydian') cells.forEach(c=>{if(c.iv===0&&c.q==='maj7') c.q='maj7#11';});
+  if(S.mode==='dorian') cells.forEach(c=>{if(c.iv===0&&Math.random()<.3) c.q='m6';});
+  if(S.mode==='mixolydian') cells.forEach(c=>{if(c.iv===0&&c.q==='7'&&Math.random()<.5) c.q='9sus4';});
+  return cells;
+}
+function colorize(cells,col){
+  const C=COLORS[col]||{};
+  return cells.map((c,i)=>{
+    if(c.q==='maj7#11'||c.q==='m6'&&col==='modal'||c.q==='9sus4') return c;
+    const nx=cells[(i+1)%cells.length]; let q=c.q;
+    const toMinor=nx&&pcm(nx.iv-c.iv)===5&&Q[nx.q].iv.includes(3)&&!Q[nx.q].iv.includes(4);
+    if(q==='7'&&toMinor&&(col==='jazz'||col==='bossa'||col==='neo')) q=pickW({'7b9':2,'7alt':1,'7b13':1});
+    else if(C[q]) q=pickW(C[q]);
+    return {...c,q};
+  });
+}
+function fitMeter(cells){
+  if(S.meter===4) return cells;
+  let s=0; const out=[];
+  for(const c of cells){const a=Math.round(s*.75), b=Math.round((s+c.beats)*.75); s+=c.beats; if(b>a) out.push({...c,beats:b-a});}
+  return out;
+}
+function genProg(style){
+  const st=GEN_STYLES[style], minor=isMinorMode(); let cells;
+  if(style==='modal') cells=genModal();
+  else if(style==='pop') cells=genPop(minor);
+  else if(st.forms) cells=parseCells(rnd(minor?st.minForms:st.forms));
+  else { const slots=minor?(st.min||GEN_STYLES.jazz.min):st.maj; cells=slots.flatMap(sl=>parseCells(rnd(sl))); }
+  { const m=[]; let pos=0; for(const c of cells){ const L=m[m.length-1];
+      if(L&&L.iv===c.iv&&L.q===c.q&&L.bass===c.bass&&Math.floor(L.start/16)===Math.floor((pos+c.beats-1)/16)) L.beats+=c.beats; else m.push({...c,start:pos}); pos+=c.beats; }
+    cells=m.map(({start,...c})=>c); }
+  cells=fitMeter(colorize(cells,st.col));
+  return cells.map(c=>({root:pcm(S.key+c.iv),q:c.q,bass:c.bass==null?null:pcm(S.key+c.bass),beats:c.beats}));
+}
+let GEN=null, genAud=null;
+function renderGen(){
+  $('#genStyle').innerHTML=Object.entries(GEN_STYLES).map(([k,v])=>`<option value="${k}" ${k===S.genStyle?'selected':''}>${v.n}</option>`).join('')+`<option value="any" ${S.genStyle==='any'?'selected':''}>Surprise me</option>`;
+  const out=$('#genOut'); out.style.setProperty('--cols',S.meter*4);
+  if(!GEN){ out.innerHTML='<span class="dim">Pick a style and roll the dice.</span>'; $('#genActs').hidden=true; $('#genNote').textContent=''; return; }
+  out.innerHTML=GEN.map((c,i)=>`<button class="gc" data-i="${i}" style="--beats:${c.beats}" title="${esc(sym(c))} · ${c.beats} beat${c.beats>1?'s':''}"><span>${sym(c)}</span><small>${roman(c).t}</small></button>`).join('');
+  $('#genActs').hidden=false;
+  const st=GEN_STYLES[GEN.style]; const md=MODES[S.mode].n.split(' (')[0];
+  $('#genNote').textContent=`${st.n.replace(' (uses the mode)','')} in ${KEYN[S.key]} ${md}`+(GEN.style==='modal'?'.':isMinorMode()?', using minor-key harmony.':', using major-key harmony.')+' Tap a chord to hear it; each row is 4 bars.';
+}
+function hlGen(i){document.querySelectorAll('#genOut .gc').forEach((b,k)=>b.classList.toggle('on',k===i));}
+function stopAud(){ if(!genAud) return; genAud.timers.forEach(clearTimeout); genAud=null; silence(); hlGen(-1); $('#genHear').textContent='▶ Hear it'; }
+function auditionGen(){
+  if(genAud){stopAud(); return;}
+  if(!GEN) return; if(P.playing) pause();
+  ensureAudio(); const spb=60/S.bpm, t0=ctx.currentTime+.06; let t=t0, last=null; const timers=[];
+  GEN.forEach((c,i)=>{ last=voiceUpper(upperPcs(c),last); const d=c.beats*spb; strike(last,t,d*.97); if(S.bass) bassNote(bassMidi(c),t,d*.97); timers.push(setTimeout(()=>hlGen(i),(t-ctx.currentTime)*1000)); t+=d; });
+  timers.push(setTimeout(()=>{genAud=null; hlGen(-1); $('#genHear').textContent='▶ Hear it';},(t-ctx.currentTime)*1000+80));
+  genAud={timers}; $('#genHear').textContent='■ Stop';
+}
+$('#genStyle').onchange=e=>{S.genStyle=e.target.value; persist();};
+$('#genBtn').onclick=()=>{
+  stopAud();
+  const style=S.genStyle==='any'?rnd(Object.keys(GEN_STYLES)):S.genStyle;
+  let g, prev=GEN?JSON.stringify(GEN):'';
+  for(let k=0;k<6;k++){ g=genProg(style); if(JSON.stringify(g)!==prev) break; }
+  GEN=g; GEN.style=style; renderGen();
+};
+$('#genOut').onclick=e=>{const b=e.target.closest('[data-i]'); if(!b||!GEN) return; const c=GEN[+b.dataset.i]; if(P.playing||genAud) return; preview(c); hlGen(+b.dataset.i); setTimeout(()=>{if(!genAud) hlGen(-1);},600);};
+$('#genHear').onclick=auditionGen;
+$('#genNew').onclick=async()=>{
+  if(!GEN) return; stopAud();
+  if(!await guardDirty('Starting a new progression will replace the chords on screen.')) return;
+  stop(); const g=GEN;
+  commit(()=>{S.prog=g.map(c=>({...c,id:uid()})); S.cur=null; clearSel();});
+  toast('New progression from the generator. Save it if you like it, or Undo to go back.');
+};
+$('#genIns').onclick=()=>{
+  if(!GEN) return; stopAud();
+  insertMany(GEN.map(c=>({...c,id:uid()})),true);
+  toast(`Inserted ${GEN.length} chords ${SEL.size?'after your selection':'at the end'}`);
+};
+
 /* ================= events ================= */
 document.addEventListener('click',e=>{const b=e.target.closest('button'); if(b&&e.detail>0) b.blur();});
 $('#playBtn').onclick=toggle;
@@ -1107,7 +1298,7 @@ $('#loopBtn').onclick=()=>{S.loop=!S.loop; renderTop(); if(S.view==='staff') ren
 $('#metroBtn').onclick=()=>{S.metro=!S.metro; renderTop(); persist();};
 $('#bassBtn').onclick=()=>{S.bass=!S.bass; renderTop(); if(S.view==='staff') renderStaff(); persist();};
 $('#previewBtn').onclick=()=>{S.preview=!S.preview; renderTop(); persist();};
-$('#meterSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.meter=+b.dataset.v; regrid(); renderTop(); renderProg(); renderDrums(); persist();};
+$('#meterSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.meter=+b.dataset.v; regrid(); GEN=null; stopAud(); renderTop(); renderProg(); renderDrums(); renderGen(); persist();};
 $('#soundSel').onchange=e=>{S.sound=e.target.value; persist();};
 $('#feelSel').onchange=e=>{S.feel=e.target.value; persist();};
 $('#undoBtn').onclick=undo; $('#redoBtn').onclick=redo;
@@ -1172,6 +1363,7 @@ $('#temps').onclick=e=>{
 /* drums */
 const DR=()=>S.dr;
 $('#drOn').onclick=()=>{S.dr.on=!S.dr.on; renderDrums(); persist();};
+$('#drFold').onclick=$('#drTitle').onclick=()=>{S.drFold=!S.drFold; renderDrums(); persist();};
 $('#drStyle').onchange=e=>{
   const v=e.target.value; if(v==='custom') return; const D=S.dr;
   D.base=D.style=v; D.swing=DSTYLES[v].sw;
