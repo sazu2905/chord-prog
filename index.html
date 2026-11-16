@@ -284,6 +284,43 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .pendslot{height:92px;flex:1;min-width:200px;border:1px dashed var(--brass);border-radius:10px;display:grid;place-items:center;color:var(--muted);font-size:13px;background:rgba(217,164,65,.05);text-align:center;padding:0 12px}
 @media (max-width:700px){.newsec,.pendslot{height:84px}}
 .sechead.pend .secname{border-left-style:dashed}
+.menu{min-width:300px}
+.menu .mi{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 10px;border-radius:8px;color:var(--text);cursor:pointer;font:inherit}
+.menu .mi:hover{background:var(--panel2)}
+.menu .mi b{font-weight:600;font-size:14px}
+.menu .mi small{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+.menu .mhead{font:500 11px var(--sans);text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:6px 10px 4px}
+.txopts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:2px 0 10px}
+.txopts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.txopts input{accent-color:var(--brass)}
+.txopts select{padding:3px 6px;font-size:13px}
+.takes{margin-top:16px}
+.takes.folded .tkbody,.takes.folded .tkx{display:none!important}
+.takes.folded .phead{margin-bottom:0}
+.takes.folded .fold{transform:rotate(-90deg)}
+.takes #tkTitle{cursor:pointer}
+.tksum{font-size:12.5px;color:var(--muted)}
+.rec-dot{width:9px;height:9px;border-radius:50%;background:#e0483a;display:inline-block}
+.btn.rec.on{background:#e0483a;border-color:#e0483a;color:#fff}
+.btn.rec.on .rec-dot{background:#fff;animation:recpulse 1s infinite}
+@keyframes recpulse{50%{opacity:.25}}
+.recbar{display:flex;align-items:center;gap:14px;padding:10px 12px;border:1px solid #6b2f2a;background:rgba(224,72,58,.08);border-radius:10px;margin-bottom:10px;font-family:var(--mono);font-size:13px;flex-wrap:wrap}
+.lvl{flex:1;min-width:120px;max-width:320px;height:8px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.lvl i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--good),var(--near) 75%,var(--off))}
+.tkbanner{background:#2a2414;border:1px solid #5c4a1f;color:#f3dfb0;border-radius:10px;padding:10px 14px;font-size:13.5px;margin-bottom:10px}
+.tklist{display:flex;flex-direction:column;gap:6px}
+.tk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:var(--panel2);border:1px solid var(--line2);border-radius:10px}
+.tk.on{border-color:var(--good)}
+.tk .tkname{background:none;border:1px solid transparent;border-radius:6px;padding:3px 6px;font:600 14px var(--sans);color:var(--text);width:150px}
+.tk .tkname:hover,.tk .tkname:focus{border-color:var(--line2);background:#0b1019;outline:none}
+.tk .tkmeta{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.tk label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.tk input[type=range]{width:90px}
+.tk .sp{flex:1}
+.tk .nv{font-family:var(--mono);min-width:52px}
+.tkempty{color:var(--muted);font-size:13.5px;padding:10px 4px}
+.tkfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.tkfoot .hint{margin:0}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -314,6 +351,10 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
       <button class="btn small" id="saveBtn">Save</button>
       <button class="btn small" id="saveAsBtn">Save as…</button>
       <span class="libwrap"><button class="btn small" id="openBtn">Open ▾</button><div class="lib" id="lib" hidden></div></span>
+      <span class="libwrap"><button class="btn small" id="dlBtn">Download ▾</button><div class="lib menu" id="dlMenu" hidden>
+        <div class="mhead">This song</div>
+        <button class="mi" data-dl="text"><b>Text</b><small>A readable chord chart to paste into a doc or notebook</small></button>
+      </div></span>
     </div>
     <div class="phead">
       <h2>Progression</h2>
@@ -348,7 +389,6 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
         <button class="btn small" id="pasteBtn" hidden>Paste</button>
       </div>
       <span class="sp"></span>
-      <button class="btn small" id="copyBtn">Copy as text</button>
       <button class="btn small danger" id="clearBtn">Clear</button>
     </div>
     <p class="hint">Drag chords to reorder. Drag across empty space to select several, or Shift-click a range. Drag a selection to move it; hold <kbd>Alt</kbd> while dropping to copy it. Select chords and choose <b>Label section…</b> to mark Intro, Verse, Chorus, A, B… Double-click a chord to play from there.
@@ -376,6 +416,28 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
         <span class="hint" style="margin:0">Click a step: normal → accent → ghost → off. Drag to paint. ▸ previews, M mutes. Ghost notes drop out first when a slider is low.</span>
       </div>
       <div class="gridscroll"><div class="dgrid" id="drGrid"></div></div>
+    </div>
+  </section>
+
+  <section class="card takes" id="takeCard">
+    <div class="phead">
+      <button class="fold" id="tkFold" aria-label="Collapse takes">▾</button>
+      <h2 id="tkTitle">Takes</h2>
+      <button class="btn small rec" id="recBtn"><span class="rec-dot"></span> Record</button>
+      <span class="tksum" id="tkSum"></span>
+      <span class="sp"></span>
+      <label class="mini tkx"><input type="checkbox" id="tkBack"> Play the song while recording</label>
+      <label class="mini tkx">Count-in <select id="tkCount"><option value="0">None</option><option value="1">1 bar</option><option value="2">2 bars</option></select></label>
+      <div class="seg tkx" id="tkScope"><button data-v="song">This song</button><button data-v="all">All takes</button></div>
+    </div>
+    <div class="tkbody">
+      <div class="recbar" id="recBar" hidden><span id="recTime">● 0:00</span><span class="lvl"><i id="recLvl"></i></span><span class="muted" id="recHint">Press Stop, Space or ● again to finish</span></div>
+      <div class="tkbanner" id="tkNote" hidden></div>
+      <div class="tklist" id="tkList"></div>
+      <div class="tkfoot">
+        <span class="btn small filebtn">Add audio file…<input type="file" id="tkFile" accept="audio/*"></span>
+        <p class="hint">Wear headphones so the backing doesn’t bleed into your take. Takes stay in this browser and aren’t uploaded or exported.</p>
+      </div>
     </div>
   </section>
 
@@ -530,11 +592,11 @@ const pcm=n=>((n%12)+12)%12;
 
 /* ================= state ================= */
 const LS='changes.v1';
-const DEF={prog:[],key:0,mode:'ionian',spell:'auto',pr:2,pq:'m7',pb:null,len:4,bpm:110,meter:4,loop:true,metro:false,bass:true,sound:'keys',feel:'held',dia7:true,saved:{},preview:true,follow:true,cur:null,clip:null,view:'chords',drFold:false,genStyle:'jazz',
+const DEF={prog:[],key:0,mode:'ionian',spell:'auto',pr:2,pq:'m7',pb:null,len:4,bpm:110,meter:4,loop:true,metro:false,bass:true,sound:'keys',feel:'held',dia7:true,saved:{},preview:true,follow:true,cur:null,clip:null,view:'chords',drFold:false,genStyle:'jazz',tkFold:false,tk:{backing:true,count:1,scope:'song'},
   dr:{on:true,base:'swing',style:'swing',swing:66,fills:'end',vol:75,pres:{kick:45,snare:45,hats:60,cym:65,toms:40},mutes:{},open:false,grid:null}};
 let S=Object.assign({},DEF);
 try{const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d) S=Object.assign(S,d);}catch(e){}
-S.dr=Object.assign({},DEF.dr,S.dr||{}); S.dr.pres=Object.assign({},DEF.dr.pres,S.dr.pres||{}); S.dr.mutes=S.dr.mutes||{};
+S.tk=Object.assign({},DEF.tk,S.tk||{}); S.dr=Object.assign({},DEF.dr,S.dr||{}); S.dr.pres=Object.assign({},DEF.dr.pres,S.dr.pres||{}); S.dr.mutes=S.dr.mutes||{};
 S.sel=null;
 function persist(){try{const {sel,multi,pendSec,...rest}=S; localStorage.setItem(LS,JSON.stringify(rest));}catch(e){} if(typeof renderDoc==='function'&&document.getElementById('docName')) try{renderDoc();}catch(e){}}
 const uid=()=>Math.random().toString(36).slice(2,9);
@@ -810,12 +872,15 @@ function scheduleDrums(t,spb,lb,T){
 
 /* ================= scheduler ================= */
 const P={playing:false,id:null,idx:0,beat:0,g:0,next:0,timer:null,events:[],resume:false,lastV:null,voice:null,vkey:null,ending:false};
-function toggle(){P.playing?pause():play();}
+function toggle(){ if(TK.rec){ stopRec(); return; } P.playing?pause():play(); }
 function restartTop(){ if(!S.prog.length){toast('Add a chord first'); return;} stop(); play(); }
-function play(){
+function play(countBeats){
   stopAud();
   if(!S.prog.length){toast('Add a chord first'); return;}
-  ensureAudio(); P.playing=true; P.ending=false; P.resume=true; P.next=ctx.currentTime+.08;
+  ensureAudio(); P.playing=true; P.ending=false; P.resume=true;
+  const cb=typeof countBeats==='number'?countBeats:0, spb0=60/S.bpm, t00=ctx.currentTime+.08;
+  for(let i=0;i<cb;i++) click(t00+i*spb0,i%S.meter===0);
+  P.next=t00+cb*spb0; P.t0=P.next;
   P.timer=setInterval(tick,25); tick(); renderTop();
 }
 function pause(){
@@ -823,9 +888,11 @@ function pause(){
   const now=ctx.currentTime; let ev=null; for(const e of P.events) if(e.t<=now) ev=e;
   if(ev){P.id=ev.id; P.beat=ev.beat; P.g=ev.g;}
   P.playing=false; clearInterval(P.timer); silence(); P.events=[]; renderTop();
+  stopTakePlay(); if(TK.rec) stopRec();
 }
 function stop(){
   if(P.playing) pause();
+  stopTakePlay(); if(TK.rec) stopRec();
   P.id=null; P.idx=0; P.beat=0; P.g=0; P.lastV=null; P.vkey=null; P.ending=false; P.crashNext=false;
   clearNowUI(); renderTop();
 }
@@ -1016,7 +1083,7 @@ function renderLib(){
   $('#lib').innerHTML=names.length?names.map(n=>{const v=S.saved[n]; const nb=(v.prog||[]).length;
     return `<div class="li${n===S.cur?' cur':''}"><button class="o" data-open="${esc(n)}">${esc(n)}<small>${nb} chord${nb===1?'':'s'} · ${KEYN[v.key]||''} ${MODES[v.mode]?MODES[v.mode].n.split(' (')[0]:''}${n===S.cur?' · open now':''}</small></button><button class="d" data-delname="${esc(n)}" title="Delete “${esc(n)}”">Delete</button></div>`;}).join('')
     :'<div class="none">Nothing saved yet. Use Save to keep this progression.</div>';
-  $('#lib').insertAdjacentHTML('beforeend',`<div class="foot"><button class="btn small" data-x="export" ${names.length?'':'disabled'}>⇡ Export…</button><button class="btn small" data-x="import">⇣ Import…</button></div>`);
+  $('#lib').insertAdjacentHTML('beforeend',`<div class="foot"><button class="btn small" data-x="export" ${names.length?'':'disabled'}>⇡ Export JSON…</button><button class="btn small" data-x="import">⇣ Import JSON…</button></div>`);
 }
 function dialog({title,text,input,value,buttons}){
   return new Promise(res=>{
@@ -1031,7 +1098,7 @@ function dialog({title,text,input,value,buttons}){
     ov.onclick=e=>{ if(e.target===ov) done(null); const b=e.target.closest('[data-i]'); if(b) done(val(buttons[+b.dataset.i])); };
   });
 }
-function writeSave(name){S.saved[name]={...curDoc(),at:Date.now()}; S.cur=name; persist(); renderDoc(); toast(`Saved “${name}”`);}
+function writeSave(name){S.saved[name]={...curDoc(),at:Date.now()}; if(!S.cur) retagTakes(TK_UNTITLED,name); S.cur=name; persist(); renderDoc(); toast(`Saved “${name}”`);}
 async function saveAs(){
   if(!S.prog.length){toast('Nothing to save yet'); return false;}
   let def=S.cur?`${S.cur} (2)`:'';
@@ -1270,7 +1337,7 @@ function renderGrid(){
   }
   const el=$('#drGrid'); el.style.setProperty('--steps',L); el.innerHTML=h; UI.step=null;
 }
-function renderAll(){renderTop(); renderProg(); renderPicker(); renderKey(); renderDrums(); if(typeof renderGen==='function'&&document.getElementById('genOut')) renderGen();}
+function renderAll(){renderTop(); renderProg(); renderPicker(); renderKey(); renderDrums(); if(typeof renderTakes==='function'&&document.getElementById('tkList')) renderTakes(); if(typeof renderGen==='function'&&document.getElementById('genOut')) renderGen();}
 
 let toastT=null;
 function toast(msg){let el=$('.toast'); if(!el){el=document.createElement('div'); el.className='toast'; document.body.appendChild(el);} el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,2200);}
@@ -1326,6 +1393,52 @@ function dupSel(){ if(!SEL.size) return; insertMany(selChords().map(c=>({...c,id
 function selectAll(){ if(!S.prog.length) return; setSel(S.prog.map(c=>c.id),S.prog[S.prog.length-1].id); ANCHOR=S.prog[0].id; renderProg(); renderPicker(); }
 function transpose(d){
   commit(()=>{S.prog.forEach(c=>{c.root=pcm(c.root+d); if(c.bass!=null) c.bass=pcm(c.bass+d);}); S.key=pcm(S.key+d);});
+}
+/* ---------- readable text chart ---------- */
+function fmtBars(beats){ const b=beats/S.meter; return `${+b.toFixed(2)} bar${b===1?'':'s'}`; }
+function barsOf(cs){
+  const m=S.meter, bars=[]; let cur=[], fill=0;
+  for(const c of cs){ let left=c.beats, first=true;
+    while(left>0){ const take=Math.min(left,m-fill); cur.push({c,beats:take,cont:!first}); fill+=take; left-=take; first=false; if(fill===m){bars.push(cur); cur=[]; fill=0;} } }
+  if(cur.length) bars.push(cur);
+  return bars;
+}
+function songText(o){
+  const label=c=>sym(c)+(o.roman?` (${roman(c).t})`:'');
+  const barStr=(b,i,all)=>{
+    if(b.length===1){ const p=all[i-1]; return b[0].cont&&p&&p.length===1&&p[0].c===b[0].c?'%':label(b[0].c); }
+    const even=!b.some(x=>x.cont)&&b.every(x=>x.beats===b[0].beats);
+    return b.map(x=>even?label(x.c):[x.cont?'/':label(x.c),...Array(x.beats-1).fill('/')].join(' ')).join(' ');
+  };
+  const lines=cs=>{ const bs=barsOf(cs).map((b,i,all)=>barStr(b,i,all)), out=[]; for(let i=0;i<bs.length;i+=o.perLine) out.push('| '+bs.slice(i,i+o.perLine).join(' | ')+' |'); return out; };
+  const k=KEYN[S.key], md=({ionian:`${k} major`,aeolian:`${k} minor`,harmonic:`${k} harmonic minor`,melodic:`${k} melodic minor`})[S.mode]||`${k} ${MODES[S.mode].n}`;
+  const out=[S.cur||'Untitled', `Key: ${md} · ${S.bpm} bpm · ${S.meter}/4`];
+  const total=S.prog.reduce((a,c)=>a+c.beats,0);
+  if(o.sections&&hasSections()){
+    out.push(`Form: ${sections().map(x=>x.label||'Untitled').join(' – ')}  (${fmtBars(total)})`,'');
+    for(const x of sections()){ const cs=S.prog.slice(x.start,x.end+1); out.push(`[${x.label||'Untitled'}]  ${fmtBars(cs.reduce((a,c)=>a+c.beats,0))}`, ...lines(cs), ''); }
+  } else { out.push(`${fmtBars(total)}`,'', ...lines(S.prog), ''); }
+  out.push('Each | | is one bar. % = repeat the previous bar. / = one more beat of the chord before it.');
+  return out.join('\n');
+}
+function textDialog(){
+  if(!S.prog.length){toast('Add some chords first'); return;}
+  const o=Object.assign({roman:false,perLine:4,sections:true},S.txtOpts||{});
+  const framed=window.self!==window.top, secs=hasSections();
+  const {ov,close}=overlay(`<h3>Text chart${S.cur?' — '+esc(S.cur):''}</h3><p>Copy this and paste it into Google Docs, a notes app, or an email.</p>
+    <div class="txopts">
+      ${secs?`<label><input type="checkbox" id="txSec" ${o.sections?'checked':''}> Section headings</label>`:''}
+      <label><input type="checkbox" id="txRom" ${o.roman?'checked':''}> Roman numerals</label>
+      <label>Bars per line <select id="txPer">${[2,4,8].map(n=>`<option ${n===o.perLine?'selected':''}>${n}</option>`).join('')}</select></label>
+    </div>
+    <textarea readonly id="txTxt" style="min-height:240px"></textarea>
+    <div class="dbtns"><button class="btn small" data-c>Close</button>${framed?'':'<button class="btn small" id="txDl">Download .txt</button>'}<button class="btn small primary" id="txCopy">Copy text</button></div>`);
+  const ta=ov.querySelector('#txTxt');
+  const upd=()=>{ o.sections=secs?ov.querySelector('#txSec').checked:o.sections; o.roman=ov.querySelector('#txRom').checked; o.perLine=+ov.querySelector('#txPer').value; S.txtOpts={...o}; persist(); ta.value=songText(o); };
+  ov.querySelectorAll('input,select').forEach(el=>el.onchange=upd); upd();
+  ov.querySelector('[data-c]').onclick=close;
+  ov.querySelector('#txCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(ta.value); toast('Chart copied — paste it anywhere'); }catch(e){ ta.focus(); ta.select(); toast('Press Ctrl/⌘+C to copy the selected text'); } };
+  const dl=ov.querySelector('#txDl'); if(dl) dl.onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([ta.value],{type:'text/plain'})); a.download=`${(S.cur||'chords').replace(/[^\w\- ]+/g,'').trim()||'chords'}.txt`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); };
 }
 const SECCOL=['#d9a441','#5ec4b6','#a993e8','#e46f5f','#7fa7e8','#e9c46a','#c78bd6','#8fd18a'];
 const SECNAMES=['Intro','Verse','Pre-chorus','Chorus','Bridge','Solo','Interlude','Outro','A','B','C','D','Head','Coda'];
@@ -1540,6 +1653,166 @@ $('#genIns').onclick=()=>{
   toast(`Inserted ${GEN.length} chords ${SEL.size?'after your selection':'at the end'}`);
 };
 
+/* ================= takes (microphone recordings) ================= */
+const TK={db:null,mem:[],list:[],rec:null,play:null,bufs:new Map(),blocked:null};
+const TK_UNTITLED='(untitled)';
+const songKey=()=>S.cur||TK_UNTITLED;
+const fmtDur=d=>{d=Math.max(0,Math.round(d||0)); return `${Math.floor(d/60)}:${String(d%60).padStart(2,'0')}`;};
+function tkOpen(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open('changes-takes',1); r.onupgradeneeded=()=>r.result.createObjectStore('takes',{keyPath:'id'}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
+function tkTx(mode,fn){ return new Promise((res,rej)=>{ const tx=TK.db.transaction('takes',mode); const out=fn(tx.objectStore('takes')); tx.oncomplete=()=>res(out&&out.result); tx.onerror=()=>rej(tx.error); }); }
+async function tkAll(){ if(!TK.db) return TK.mem.slice(); try{ return await tkTx('readonly',st=>st.getAll())||[]; }catch(e){ return []; } }
+async function tkPut(t){ if(!TK.db){ const i=TK.mem.findIndex(x=>x.id===t.id); i>=0?TK.mem[i]=t:TK.mem.push(t); return; } await tkTx('readwrite',st=>st.put(t)); }
+async function tkDel(id){ if(!TK.db){ TK.mem=TK.mem.filter(x=>x.id!==id); return; } await tkTx('readwrite',st=>st.delete(id)); }
+async function refreshTakes(){ TK.list=(await tkAll()).sort((a,b)=>a.at-b.at); renderTakes(); }
+async function retagTakes(from,to){ for(const t of TK.list.filter(x=>x.song===from)){ t.song=to; try{ await tkPut(t); }catch(e){} } renderTakes(); }
+tkOpen().then(db=>{TK.db=db;}).catch(()=>{TK.db=null; TK.noStore=true;}).finally(refreshTakes);
+
+function noMic(msg){
+  TK.blocked=msg; renderTakes();
+}
+async function startRec(){
+  if(TK.rec){ stopRec(); return; }
+  if(S.tk.backing&&!S.prog.length){ toast('Add some chords first, or turn off “Play the song while recording”'); return; }
+  const framed=window.self!==window.top;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){ noMic(framed?'viewer':'browser'); return; }
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); }
+  catch(e){ noMic(framed?'viewer':(e&&e.name==='NotFoundError'?'nodevice':'denied')); return; }
+  TK.blocked=null;
+  ensureAudio(); if(ctx.state==='suspended') await ctx.resume();
+  stop(); stopTakePlay();
+  const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'].find(m=>{try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}})||'';
+  let mr; try{ mr=new MediaRecorder(stream,mime?{mimeType:mime}:{}); }catch(e){ stream.getTracks().forEach(t=>t.stop()); noMic('browser'); return; }
+  const src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser(), mute=ctx.createGain(); an.fftSize=1024; mute.gain.value=0; src.connect(an); an.connect(mute); mute.connect(ctx.destination);
+  const rec={mr,stream,src,an,mute,chunks:[],tStart:null,t0:null,song:songKey(),bpm:S.bpm,withSong:S.tk.backing&&S.prog.length>0,count:S.tk.count*S.meter};
+  TK.rec=rec;
+  mr.ondataavailable=e=>{ if(e.data&&e.data.size) rec.chunks.push(e.data); };
+  mr.onstart=()=>{ rec.tStart=ctx.currentTime; if(rec.withSong){ play(rec.count); rec.t0=P.t0; } };
+  mr.onstop=()=>saveTake(rec,mr.mimeType||mime);
+  mr.start(250);
+  renderTakes(); recMeter();
+}
+function stopRec(){
+  const r=TK.rec; if(!r) return; TK.rec=null;
+  try{ r.mr.state!=='inactive'&&r.mr.stop(); }catch(e){}
+  r.stream.getTracks().forEach(t=>t.stop()); try{ r.src.disconnect(); r.an.disconnect(); r.mute.disconnect(); }catch(e){}
+  r.tEnd=ctx.currentTime;
+  if(P.playing) stop();
+  renderTakes();
+}
+async function saveTake(rec,mime){
+  const blob=new Blob(rec.chunks,{type:mime||'audio/webm'});
+  if(!blob.size){ toast('Nothing was recorded'); return; }
+  let dur=(rec.tEnd||ctx.currentTime)-(rec.tStart||0);
+  try{ const b=await ctx.decodeAudioData(await blob.arrayBuffer()); dur=b.duration; }catch(e){}
+  const n=TK.list.filter(t=>t.song===rec.song).length+1;
+  const lat=Math.round(((ctx.outputLatency||0)+(ctx.baseLatency||0))*1000);
+  const take={id:uid(),name:`Take ${n}`,song:rec.song,at:Date.now(),dur,lead:rec.t0!=null&&rec.tStart!=null?Math.max(0,rec.t0-rec.tStart):0,
+    nudge:rec.withSong?lat:0,vol:1,bpm:rec.bpm,withSong:rec.withSong,mime:blob.type,blob};
+  try{ await tkPut(take); }catch(e){ TK.mem.push(take); toast('Couldn’t store the take permanently; it will be lost on reload'); }
+  await refreshTakes(); toast(`Saved ${take.name}`);
+}
+function recMeter(){
+  const r=TK.rec; if(!r) { $('#recLvl').style.width='0'; return; }
+  const a=new Float32Array(r.an.fftSize); r.an.getFloatTimeDomainData(a);
+  let pk=0; for(const v of a) pk=Math.max(pk,Math.abs(v));
+  $('#recLvl').style.width=Math.min(100,Math.round(Math.sqrt(pk)*100))+'%';
+  const now=ctx.currentTime;
+  if(r.t0!=null&&now<r.t0){ const beatsLeft=Math.ceil((r.t0-now)/(60/S.bpm)); $('#recTime').textContent=`● Count-in… ${beatsLeft}`; }
+  else $('#recTime').textContent='● Recording '+fmtDur(now-(r.t0!=null?r.t0:(r.tStart||now)));
+  requestAnimationFrame(recMeter);
+}
+async function takeBuf(t){ if(TK.bufs.has(t.id)) return TK.bufs.get(t.id); const b=await ctx.decodeAudioData(await t.blob.arrayBuffer()); TK.bufs.set(t.id,b); return b; }
+function stopTakePlay(){ const p=TK.play; if(!p) return; TK.play=null; try{ p.src.onended=null; p.src.stop(); }catch(e){} if(document.getElementById('tkList')) renderTakes(); }
+async function playTake(id,withSong){
+  const t=TK.list.find(x=>x.id===id); if(!t) return;
+  if(TK.play&&TK.play.id===id&&TK.play.withSong===withSong){ stopTakePlay(); if(withSong&&P.playing) stop(); return; }
+  if(TK.rec) return;
+  ensureAudio(); if(ctx.state==='suspended') await ctx.resume();
+  let buf; try{ buf=await takeBuf(t); }catch(e){ toast('This browser can’t play that recording'); return; }
+  stopTakePlay(); if(P.playing||P.id!=null) stop();
+  const g=ctx.createGain(); g.gain.value=t.vol; g.connect(dry);
+  const src=ctx.createBufferSource(); src.buffer=buf; src.connect(g);
+  if(withSong&&S.prog.length){
+    play(0);
+    const off=t.lead+(t.nudge||0)/1000;
+    if(off>=0) src.start(P.t0,Math.min(off,buf.duration)); else src.start(P.t0-off,0);
+  } else src.start(ctx.currentTime+.03,t.withSong?Math.max(0,t.lead-.3):0);
+  src.onended=()=>{ if(TK.play&&TK.play.src===src){ TK.play=null; if(withSong&&P.playing) stop(); renderTakes(); } };
+  TK.play={id,src,g,withSong}; renderTakes();
+}
+async function updTake(id,patch){ const t=TK.list.find(x=>x.id===id); if(!t) return; Object.assign(t,patch); try{ await tkPut(t); }catch(e){} }
+async function addAudioFile(f){
+  if(!f) return; if(f.size>200e6){ toast('That file is too large'); return; }
+  ensureAudio(); let dur=0;
+  try{ const b=await ctx.decodeAudioData(await f.arrayBuffer()); dur=b.duration; }catch(e){ toast('That file isn’t an audio format this browser can play'); return; }
+  const take={id:uid(),name:f.name.replace(/\.[^.]+$/,'').slice(0,40)||'Audio',song:songKey(),at:Date.now(),dur,lead:0,nudge:0,vol:1,bpm:S.bpm,withSong:false,mime:f.type,blob:f};
+  try{ await tkPut(take); }catch(e){ TK.mem.push(take); }
+  await refreshTakes(); toast(`Added “${take.name}”`);
+}
+const TK_MSG={
+  viewer:'Recording isn’t available here: the Claude viewer blocks microphone access. To record, open Changes from your GitHub Pages site or from the index.html file on your computer. Here you can still add an audio file as a take.',
+  denied:'Microphone access was blocked. Allow the microphone for this site in your browser’s address bar, then press Record again.',
+  nodevice:'No microphone was found. Plug one in or check your system sound settings, then press Record again.',
+  browser:'This browser can’t record audio. Try a current version of Chrome, Edge, Firefox or Safari.'
+};
+function renderTakes(){
+  const card=$('#takeCard'); if(!card) return;
+  card.classList.toggle('folded',!!S.tkFold);
+  const rec=!!TK.rec, rb=$('#recBtn');
+  rb.classList.toggle('on',rec); rb.innerHTML=rec?'<span class="rec-dot"></span> Stop':'<span class="rec-dot"></span> Record';
+  $('#recBar').hidden=!rec;
+  $('#tkBack').checked=!!S.tk.backing; $('#tkCount').value=String(S.tk.count); $('#tkCount').disabled=!S.tk.backing;
+  $('#tkScope').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.tk.scope));
+  const note=$('#tkNote'); note.hidden=!TK.blocked&&!TK.noStore;
+  note.textContent=TK.blocked?TK_MSG[TK.blocked]:(TK.noStore?'This browser isn’t letting Changes store recordings, so takes will disappear when you reload.':'');
+  const sk=songKey(), all=S.tk.scope==='all';
+  const list=TK.list.filter(t=>all||t.song===sk);
+  const mine=TK.list.filter(t=>t.song===sk).length;
+  $('#tkSum').textContent=rec?'recording…':`${mine} take${mine===1?'':'s'} for this song`;
+  const el=$('#tkList');
+  if(!list.length){ el.innerHTML=`<div class="tkempty">${all?'No takes yet.':'No takes for this song yet. Press ● Record to sing or play along.'}</div>`; return; }
+  const pid=TK.play&&TK.play.id, pw=TK.play&&TK.play.withSong;
+  el.innerHTML=list.slice().reverse().map(t=>{
+    const on=pid===t.id, d=new Date(t.at);
+    return `<div class="tk${on?' on':''}" data-id="${t.id}">
+      <button class="btn small" data-ta="song" ${S.prog.length?'':'disabled'} title="Play this take with the song, lined up from the top">${on&&pw?'■ Stop':'▶ With song'}</button>
+      <button class="btn small" data-ta="solo">${on&&!pw?'■ Stop':'▶ Alone'}</button>
+      <input class="tkname" data-ta="name" value="${esc(t.name)}" maxlength="40" aria-label="Take name">
+      <span class="tkmeta">${fmtDur(t.dur)} · ${t.bpm} bpm · ${d.toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}${all?` · ${esc(t.song===TK_UNTITLED?'Untitled':t.song)}`:''}</span>
+      <span class="sp"></span>
+      ${t.withSong?`<label title="If the take sounds early or late against the song, slide this">Sync <input type="range" min="-300" max="300" step="5" value="${t.nudge||0}" data-ta="nudge"><span class="nv">${(t.nudge||0)>0?'+':''}${t.nudge||0} ms</span></label>`:''}
+      <label>Vol <input type="range" min="0" max="150" value="${Math.round((t.vol??1)*100)}" data-ta="vol"></label>
+      <button class="btn small danger" data-ta="del">Delete</button>
+    </div>`;}).join('');
+}
+$('#recBtn').onclick=startRec;
+$('#tkFold').onclick=$('#tkTitle').onclick=()=>{S.tkFold=!S.tkFold; persist(); renderTakes();};
+$('#tkBack').onchange=e=>{S.tk.backing=e.target.checked; persist(); renderTakes();};
+$('#tkCount').onchange=e=>{S.tk.count=+e.target.value; persist();};
+$('#tkScope').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.tk.scope=b.dataset.v; persist(); renderTakes();};
+$('#tkFile').onchange=e=>{ addAudioFile(e.target.files[0]); e.target.value=''; };
+$('#tkList').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-ta]'), row=e.target.closest('.tk'); if(!b||!row||b.tagName==='INPUT') return;
+  const id=row.dataset.id, a=b.dataset.ta;
+  if(a==='song') playTake(id,true);
+  else if(a==='solo') playTake(id,false);
+  else if(a==='del'){ const t=TK.list.find(x=>x.id===id);
+    const r=await dialog({title:`Delete “${t.name}”?`,text:'The recording is removed from this browser. This can’t be undone.',buttons:[{label:'Cancel'},{label:'Delete',cls:'danger',v:'yes'}]});
+    if(r!=='yes') return; if(TK.play&&TK.play.id===id) stopTakePlay(); await tkDel(id); TK.bufs.delete(id); refreshTakes(); }
+});
+$('#tkList').addEventListener('input',e=>{
+  const row=e.target.closest('.tk'); if(!row) return; const id=row.dataset.id, a=e.target.dataset.ta, v=+e.target.value;
+  if(a==='vol'){ if(TK.play&&TK.play.id===id) TK.play.g.gain.setTargetAtTime(v/100,ctx.currentTime,.02); }
+  if(a==='nudge') e.target.nextElementSibling.textContent=`${v>0?'+':''}${v} ms`;
+});
+$('#tkList').addEventListener('change',e=>{
+  const row=e.target.closest('.tk'); if(!row) return; const id=row.dataset.id, a=e.target.dataset.ta;
+  if(a==='vol') updTake(id,{vol:+e.target.value/100});
+  else if(a==='nudge') updTake(id,{nudge:+e.target.value});
+  else if(a==='name') updTake(id,{name:e.target.value.trim().slice(0,40)||'Take'});
+});
+
 /* ================= events ================= */
 document.addEventListener('click',e=>{const b=e.target.closest('button'); if(b&&e.detail>0) b.blur();});
 $('#playBtn').onclick=toggle;
@@ -1556,28 +1829,19 @@ $('#feelSel').onchange=e=>{S.feel=e.target.value; persist();};
 $('#undoBtn').onclick=undo; $('#redoBtn').onclick=redo;
 $('#tDown').onclick=()=>transpose(-1); $('#tUp').onclick=()=>transpose(1);
 $('#clearBtn').onclick=()=>{ if(!S.prog.length) return; commit(()=>{S.prog=[]; clearSel();}); stop(); toast('Cleared — Undo brings it back'); };
-$('#copyBtn').onclick=async()=>{
-  if(!S.prog.length){toast('Nothing to copy yet'); return;}
-  const txt=chartText();
-  try{ await navigator.clipboard.writeText(txt); toast('Chart copied as text'); }
-  catch(e){
-    const ov=document.createElement('div'); ov.className='overlay';
-    ov.innerHTML=`<div><h3>Chord chart</h3><textarea readonly></textarea><div style="text-align:right"><button class="btn small">Close</button></div></div>`;
-    ov.querySelector('textarea').value=txt; document.body.appendChild(ov); ov.querySelector('textarea').select();
-    ov.onclick=ev=>{ if(ev.target===ov||ev.target.closest('button')) ov.remove(); };
-  }
-};
 $('#newBtn').onclick=newDoc;
 $('#saveBtn').onclick=save;
 $('#saveAsBtn').onclick=saveAs;
-$('#openBtn').onclick=e=>{e.stopPropagation(); const l=$('#lib'); l.hidden=!l.hidden; if(!l.hidden) renderLib();};
+$('#openBtn').onclick=e=>{e.stopPropagation(); $('#dlMenu').hidden=true; const l=$('#lib'); l.hidden=!l.hidden; if(!l.hidden) renderLib();};
 $('#lib').onclick=e=>{
   e.stopPropagation();
   const o=e.target.closest('[data-open]'), d=e.target.closest('[data-delname]'), x=e.target.closest('[data-x]');
   if(o) openDoc(o.dataset.open); else if(d) deleteDoc(d.dataset.delname);
   else if(x){ $('#lib').hidden=true; x.dataset.x==='export'?exportDialog():importDialog(); }
 };
-document.addEventListener('click',e=>{ if(!e.target.closest('.libwrap')&&!e.target.closest('.overlay')) $('#lib').hidden=true; });
+document.addEventListener('click',e=>{ if(e.target.closest('.overlay')) return; const w=e.target.closest('.libwrap'); document.querySelectorAll('.libwrap > .lib').forEach(m=>{ if(!w||!w.contains(m)) m.hidden=true; }); });
+$('#dlBtn').onclick=e=>{ e.stopPropagation(); $('#lib').hidden=true; const m=$('#dlMenu'); m.hidden=!m.hidden; };
+$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); };
 $('#viewSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.view=b.dataset.v; persist(); renderProg();};
 $('#selAllBtn').onclick=selectAll;
 $('#multiBtn').onclick=()=>{S.multi=!S.multi; renderProg();};
@@ -1789,7 +2053,7 @@ document.addEventListener('keydown',e=>{
   else if(mod&&k==='y'){e.preventDefault(); redo();}
   else if(e.code==='Space'){e.preventDefault(); toggle();}
   else if(e.key==='Enter'&&!mod){ if(e.target.closest&&e.target.closest('button,a,summary')) return; e.preventDefault(); restartTop(); }
-  else if(e.key==='Escape'){clearSel(); $('#lib').hidden=true; renderProg(); renderPicker();}
+  else if(e.key==='Escape'){clearSel(); $('#lib').hidden=true; $('#dlMenu').hidden=true; renderProg(); renderPicker();}
   else if((e.key==='Backspace'||e.key==='Delete')&&SEL.size){e.preventDefault(); delSel();}
   else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault(); const d=e.key==='ArrowLeft'?-1:1; e.altKey?moveSel(d):stepSel(d,e.shiftKey);}
 });
