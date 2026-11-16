@@ -10,16 +10,19 @@ Open `index.html` in a browser. Everything is in that one file (HTML, CSS, JavaS
 - **Key & mode:** 9 modes (the church modes plus harmonic and melodic minor), the mode's chords as triads or 7ths, Roman-numeral analysis, sharp/flat spelling.
 - **Re-key / re-mode:** changing key or mode moves the whole progression by scale degree (e.g. G major ii–V–I becomes Aø7–Dm7–Gm7 in G minor), with undo/redo to compare.
 - **Playback:** loop with play/pause/stop, tempo, 4/4 or 3/4, click, bass, three sounds (Keys, Pad, Organ), three rhythms (Held, Charleston, Quarters), smooth voice leading.
-- **Arranging:** drag to reorder (mouse or touch), edit chords in place, duplicate, move, delete, transpose, undo/redo, copy as a text chord chart, save/load named progressions.
+- **Arranging:** drag to reorder (mouse or touch), edit chords in place, duplicate, move, delete, transpose, undo/redo, copy as a text chord chart.
+- **Multi-select:** box-select by dragging across empty space, Shift-click ranges, Ctrl/⌘-click to toggle (or the Multi-select toggle on touch). Copy, cut, paste and duplicate whole sections, including between saved progressions. Drag a selection to move it; hold Alt while dropping to copy it. Type and length edits apply to every selected chord.
+- **Files:** New, Save, Save as… and Open, with an unsaved-changes indicator and a prompt before anything on screen would be replaced.
+- **Staff view:** a read-only grand staff showing the exact piano voicing and bass note played for every chord, highlighted during playback, with a First time / On repeat switch where voice leading voices the loop differently.
 - **Drums:** 8 styles, presence sliders for kick, snare, hats, cymbals and toms, auto fills, swing, and an expandable 16-step sequencer with accents and ghost notes.
 
 ## Keyboard
 
-`Space` play/pause · `Enter` add chord · `←` `→` select · `Shift`+`←` `→` move · `Del` remove · `Esc` deselect · `Ctrl/⌘+Z` undo
+`Space` play/pause · `Enter` add chord · `Ctrl/⌘` + `C` `X` `V` `D` `A` copy, cut, paste, duplicate, select all · `Ctrl/⌘+S` save (`Shift` for Save as) · `←` `→` select · `Shift`+`←` `→` extend selection · `Alt`+`←` `→` move · `Del` remove · `Esc` deselect · `Ctrl/⌘+Z` undo
 
 ## Storage
 
-Progressions and settings are saved in the browser's `localStorage`.
+Progressions and settings are saved in the browser's `localStorage`. Nothing is uploaded, so saved progressions stay on the device and browser where they were made.
 
 ## Roadmap
 
