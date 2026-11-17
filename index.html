@@ -248,6 +248,8 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .bar{stroke:#6b7590;stroke-width:1}
 .clef{fill:var(--muted);font-family:"Noto Music","Apple Symbols","Segoe UI Symbol",serif}
 .bnum{font:10px var(--mono);fill:var(--dim)}
+.ksig{font-size:16px;fill:var(--muted);font-family:"Noto Music","Apple Symbols","Segoe UI Symbol",serif}
+.tsig{font:700 17px Georgia,"Times New Roman",serif;fill:var(--muted)}
 .rmk{fill:none;stroke:var(--brass);stroke-width:1.2}
 .rmkt{font:600 11.5px var(--sans);fill:var(--brass)}
 .staffnote{font-size:12.5px;color:var(--muted);margin:6px 4px 2px}
@@ -1293,23 +1295,38 @@ function voicePlan(){
 }
 const LETTER={C:0,D:1,E:2,F:3,G:4,A:5,B:6};
 function spellM(m){const n=nm(m); return {step:(Math.floor(m/12)-1)*7+LETTER[n[0]],acc:n.slice(1),name:n+(Math.floor(m/12)-1)};}
+/* key signature of the mode's parent major key (harmonic/melodic minor use the natural-minor signature) */
+function keySig(){
+  const p=parentPc(), SH={0:0,7:1,2:2,9:3,4:4,11:5}, FL={5:1,10:2,3:3,8:4,1:5};
+  if(p===6) return S.spell==='sharp'?{n:6,t:1}:{n:6,t:-1};
+  if(p in SH) return {n:SH[p],t:SH[p]?1:0};
+  return {n:FL[p],t:-1};
+}
+const KS_ORDER={'1':[3,0,4,1,5,2,6],'-1':[6,2,5,1,4,0,3]};            /* letter indices: F C G D A E B / B E A D G C F */
+const KS_TREBLE={'1':[38,35,39,36,33,37,34],'-1':[34,37,33,36,32,35,31]}; /* staff steps on the treble clef */
 function renderStaff(){
   const box=$('#staffSvg'), head=$('#staffHead'), note=$('#staffNote'), p=S.prog;
   if(!p.length){head.innerHTML=''; box.innerHTML='<div class="empty" style="padding:28px;text-align:center;color:var(--muted)">Add some chords to see them on the staff.</div>'; note.textContent=''; return;}
   const plan=voicePlan(), m=S.meter, T=p.reduce((a,c)=>a+c.beats,0);
   head.innerHTML=`<span><i style="background:var(--text)"></i>Piano</span>${S.bass?'<span><i style="background:var(--good)"></i>Bass</span>':''}<span class="sp"></span>`+
     (plan.diff.length?`<div class="seg" id="passSeg"><button data-v="first" class="${staffPass==='first'?'on':''}">First time</button><button data-v="loop" class="${staffPass==='loop'?'on':''}">On repeat</button></div>`:'');
-  const W=Math.max(320,box.clientWidth||strip.clientWidth||900), L=48, avail=W-L-10;
+  const ks=keySig(), ksAlt=[0,0,0,0,0,0,0]; for(let i=0;i<ks.n;i++) ksAlt[KS_ORDER[ks.t][i]]=ks.t;
+  const ksW=ks.n?ks.n*8+6:0, LB=44+ksW, LA=LB+22;
+  const W=Math.max(320,box.clientWidth||strip.clientWidth||900), L=LA, avail=W-L-10;
   const bps=Math.max(1,Math.floor(avail/(m*46))), bw=avail/(bps*m), sysB=bps*m, nsys=Math.ceil(T/sysB), SH=186;
   const starts=[]; let acc=0; for(const c of p){starts.push(acc); acc+=c.beats;}
   const ACC=new Map(); /* `${bar}:${staffStep}` → alteration in effect */
   let svg=`<svg width="${W}" height="${nsys*SH}" viewBox="0 0 ${W} ${nsys*SH}" xmlns="http://www.w3.org/2000/svg">`;
   for(let k=0;k<nsys;k++){
+    const L=k===0?LA:LB;
     const y0=k*SH, TT=y0+54, BT=TT+76, B0=k*sysB, B1=Math.min(T,B0+sysB), xEnd=L+(B1-B0)*bw;
     const yT=s=>TT+(38-s)*4, yB=s=>BT+(26-s)*4;
     for(let i=0;i<5;i++){svg+=`<line class="stl" x1="6" x2="${xEnd}" y1="${TT+i*8}" y2="${TT+i*8}"/><line class="stl" x1="6" x2="${xEnd}" y1="${BT+i*8}" y2="${BT+i*8}"/>`;}
     svg+=`<line class="bar" x1="6" x2="6" y1="${TT}" y2="${BT+32}"/>`;
     svg+=`<text class="clef" x="9" y="${TT+25}" font-size="34">𝄞</text><text class="clef" x="10" y="${BT+17}" font-size="26">𝄢</text>`;
+    for(let i=0;i<ks.n;i++){ const st=KS_TREBLE[ks.t][i], gl=ks.t>0?'♯':'♭', x=40+i*8;
+      svg+=`<text class="ksig" x="${x}" y="${yT(st)+5}" text-anchor="middle">${gl}</text><text class="ksig" x="${x}" y="${yB(st-14)+5}" text-anchor="middle">${gl}</text>`; }
+    if(k===0){ const tx=LB-2; svg+=`<text class="tsig" x="${tx}" y="${TT+15}" text-anchor="middle">${m}</text><text class="tsig" x="${tx}" y="${TT+31}" text-anchor="middle">4</text><text class="tsig" x="${tx}" y="${BT+15}" text-anchor="middle">${m}</text><text class="tsig" x="${tx}" y="${BT+31}" text-anchor="middle">4</text>`; }
     svg+=`<text class="bnum" x="8" y="${TT-22}">${Math.floor(B0/m)+1}</text>`;
     for(let b=Math.ceil((B0+1)/m)*m;b<=B1;b+=m){const x=L+(b-B0)*bw-2; svg+=`<line class="bar" x1="${x}" x2="${x}" y1="${TT}" y2="${BT+32}"/>`; if(b===T&&(!S.loop||true)) svg+=`<line class="bar" x1="${x-3}" x2="${x-3}" y1="${TT}" y2="${BT+32}"/>`;}
     p.forEach((c,ci)=>{
@@ -1334,7 +1351,7 @@ function renderStaff(){
           if(stemUp){ let pv=-99,po=false; ns.forEach(n=>{ const o=n.step-pv<=1&&!po; n.dx=o?11:0; po=o; pv=n.step; }); }
           else { let pv=99,po=false; [...ns].reverse().forEach(n=>{ const o=pv-n.step<=1&&!po; n.dx=o?-11:0; po=o; pv=n.step; }); }
           /* accidentals: only on the first (untied) note; they last until the bar line */
-          if(!tiedIn) ns.forEach(n=>{ const k=bar+':'+n.step, cur=ACC.has(k)?ACC.get(k):0; n.show=n.alt!==cur?(n.alt===0?'♮':n.acc):''; ACC.set(k,n.alt); });
+          if(!tiedIn) ns.forEach(n=>{ const k=bar+':'+n.step, cur=ACC.has(k)?ACC.get(k):ksAlt[((n.step%7)+7)%7]; n.show=n.alt!==cur?(n.alt===0?'♮':n.acc):''; ACC.set(k,n.alt); });
           const lg=new Set();
           ns.forEach(n=>{ if(staff==='t'){ for(let l=28;l>=n.step;l-=2) lg.add(l); for(let l=40;l<=n.step;l+=2) lg.add(l);} else { for(let l=16;l>=n.step;l-=2) lg.add(l); for(let l=28;l<=n.step;l+=2) lg.add(l);} });
           const minDx=Math.min(0,...ns.map(n=>n.dx)), maxDx=Math.max(0,...ns.map(n=>n.dx));
