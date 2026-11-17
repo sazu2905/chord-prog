@@ -231,6 +231,15 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .sc.cont .sym{fill:var(--dim)}
 .sc .nh{fill:none;stroke:var(--text);stroke-width:1.7}
 .sc .nh.bs{stroke:var(--good)}
+.sc .nh.q{fill:var(--text)}
+.sc .nh.q.bs{fill:var(--good)}
+.sc .stem{stroke:var(--text);stroke-width:1.3}
+.sc .tie{fill:none;stroke:var(--text);stroke-width:1.2}
+.sc .tie.bs{stroke:var(--good)}
+.sc .dot{fill:var(--text)}
+.sc .dot.bs{fill:var(--good)}
+.sc.cont .nh.q,.sc.cont .dot{fill:var(--dim)}
+.sc.cont .stem,.sc.cont .tie{stroke:var(--dim)}
 .sc.cont .nh{stroke:var(--dim)}
 .sc .acc{font-size:16px;fill:var(--text);font-family:"Noto Music","Apple Symbols","Segoe UI Symbol",serif}
 .sc .acc.bs{fill:var(--good)}
@@ -1291,7 +1300,7 @@ function renderStaff(){
   head.innerHTML=`<span><i style="background:var(--text)"></i>Piano</span>${S.bass?'<span><i style="background:var(--good)"></i>Bass</span>':''}<span class="sp"></span>`+
     (plan.diff.length?`<div class="seg" id="passSeg"><button data-v="first" class="${staffPass==='first'?'on':''}">First time</button><button data-v="loop" class="${staffPass==='loop'?'on':''}">On repeat</button></div>`:'');
   const W=Math.max(320,box.clientWidth||strip.clientWidth||900), L=48, avail=W-L-10;
-  const bps=Math.max(1,Math.floor(avail/(m*34))), bw=avail/(bps*m), sysB=bps*m, nsys=Math.ceil(T/sysB), SH=186;
+  const bps=Math.max(1,Math.floor(avail/(m*46))), bw=avail/(bps*m), sysB=bps*m, nsys=Math.ceil(T/sysB), SH=186;
   const starts=[]; let acc=0; for(const c of p){starts.push(acc); acc+=c.beats;}
   const ACC=new Map(); /* `${bar}:${staffStep}` → alteration in effect */
   let svg=`<svg width="${W}" height="${nsys*SH}" viewBox="0 0 ${W} ${nsys*SH}" xmlns="http://www.w3.org/2000/svg">`;
@@ -1305,25 +1314,45 @@ function renderStaff(){
     for(let b=Math.ceil((B0+1)/m)*m;b<=B1;b+=m){const x=L+(b-B0)*bw-2; svg+=`<line class="bar" x1="${x}" x2="${x}" y1="${TT}" y2="${BT+32}"/>`; if(b===T&&(!S.loop||true)) svg+=`<line class="bar" x1="${x-3}" x2="${x-3}" y1="${TT}" y2="${BT+32}"/>`;}
     p.forEach((c,ci)=>{
       const s0=starts[ci], s1=s0+c.beats; if(s1<=B0||s0>=B1) return;
-      const cont=s0<B0, a0=Math.max(s0,B0), x0=L+(a0-B0)*bw, w=(Math.min(s1,B1)-a0)*bw, nx=x0+24, bar=Math.floor(a0/m);
+      const cont=s0<B0, a0=Math.max(s0,B0), x0=L+(a0-B0)*bw, w=(Math.min(s1,B1)-a0)*bw, xEnd=L+(B1-B0)*bw;
       const up=plan.v[ci]||[], bm=S.bass?bassMidi(c):null;
       const notes=up.map(mm=>({m:mm,bs:false})); if(bm!=null) notes.push({m:bm,bs:true});
+      /* split the chord at bar lines; each piece gets a real note value, joined by ties */
+      const segs=[]; for(let a=s0;a<s1;){ const b=Math.min(s1,(Math.floor(a/m)+1)*m); segs.push({a,b}); a=b; }
       const names=[]; let g='';
-      for(const staff of ['t','b']){
-        const ns=notes.filter(n=>(staff==='t')===(n.m>=60)).map(n=>({...n,...spellNote(c,n.m,n.bs)})).sort((a,b)=>a.step-b.step||a.m-b.m);
-        /* an accidental lasts until the bar line at that staff position: show it only when it changes, and cancel with ♮ */
-        ns.forEach(n=>{ const k=bar+':'+n.step, cur=ACC.has(k)?ACC.get(k):0; n.show=n.alt!==cur?(n.alt===0?'♮':n.acc):''; ACC.set(k,n.alt); });
-        const Y=staff==='t'?yT:yB;
-        let prevStep=-99, prevOff=false;
-        ns.forEach(n=>{ n.off=(n.step-prevStep<=1&&!prevOff); prevOff=n.off; prevStep=n.step; });
-        const lg=new Set();
-        ns.forEach(n=>{ if(staff==='t'){ for(let l=28;l>=n.step;l-=2) lg.add(l); for(let l=40;l<=n.step;l+=2) lg.add(l);} else { for(let l=16;l>=n.step;l-=2) lg.add(l); for(let l=28;l<=n.step;l+=2) lg.add(l);} });
-        lg.forEach(l=>{ g+=`<line class="lg" x1="${nx-9}" x2="${nx+(ns.some(n=>n.off)?20:9)}" y1="${Y(l)}" y2="${Y(l)}"/>`; });
-        const accCols=[]; [...ns].reverse().forEach(n=>{ if(!n.show) return; let col=0; while(accCols.some(a=>a.col===col&&Math.abs(a.step-n.step)<6)) col++; accCols.push({col,step:n.step}); g+=`<text class="acc${n.bs?' bs':''}" x="${nx-15-col*9}" y="${Y(n.step)+5}" text-anchor="middle">${n.show}</text>`; });
-        ns.forEach(n=>{ g+=`<ellipse class="nh${n.bs?' bs':''}" cx="${nx+(n.off?11:0)}" cy="${Y(n.step)}" rx="5.6" ry="4" transform="rotate(-18 ${nx+(n.off?11:0)} ${Y(n.step)})"/>`; });
-      }
+      segs.forEach((sg,si)=>{
+        if(sg.b<=B0||sg.a>=B1) return;
+        const nx=L+(sg.a-B0)*bw+24, len=sg.b-sg.a, bar=Math.floor(sg.a/m), tiedIn=si>0, prevSeg=segs[si-1], nextSeg=segs[si+1];
+        const val=len>=4?'w':len===3?'hd':len===2?'h':'q';
+        for(const staff of ['t','b']){
+          const ns=notes.filter(n=>(staff==='t')===(n.m>=60)).map(n=>({...n,...spellNote(c,n.m,n.bs)})).sort((a,b)=>a.step-b.step||a.m-b.m);
+          if(!ns.length) continue;
+          const Y=staff==='t'?yT:yB, mid=staff==='t'?34:22, lo=ns[0].step, hi=ns[ns.length-1].step;
+          const stemUp=(hi-mid)<=(mid-lo);
+          /* seconds: with the stem up the upper note moves right; with it down the lower note moves left */
+          ns.forEach(n=>n.dx=0);
+          if(stemUp){ let pv=-99,po=false; ns.forEach(n=>{ const o=n.step-pv<=1&&!po; n.dx=o?11:0; po=o; pv=n.step; }); }
+          else { let pv=99,po=false; [...ns].reverse().forEach(n=>{ const o=pv-n.step<=1&&!po; n.dx=o?-11:0; po=o; pv=n.step; }); }
+          /* accidentals: only on the first (untied) note; they last until the bar line */
+          if(!tiedIn) ns.forEach(n=>{ const k=bar+':'+n.step, cur=ACC.has(k)?ACC.get(k):0; n.show=n.alt!==cur?(n.alt===0?'♮':n.acc):''; ACC.set(k,n.alt); });
+          const lg=new Set();
+          ns.forEach(n=>{ if(staff==='t'){ for(let l=28;l>=n.step;l-=2) lg.add(l); for(let l=40;l<=n.step;l+=2) lg.add(l);} else { for(let l=16;l>=n.step;l-=2) lg.add(l); for(let l=28;l<=n.step;l+=2) lg.add(l);} });
+          const minDx=Math.min(0,...ns.map(n=>n.dx)), maxDx=Math.max(0,...ns.map(n=>n.dx));
+          lg.forEach(l=>{ g+=`<line class="lg" x1="${nx-9+minDx}" x2="${nx+9+maxDx}" y1="${Y(l)}" y2="${Y(l)}"/>`; });
+          const accCols=[]; [...ns].reverse().forEach(n=>{ if(!n.show) return; let col=0; while(accCols.some(a=>a.col===col&&Math.abs(a.step-n.step)<6)) col++; accCols.push({col,step:n.step}); g+=`<text class="acc${n.bs?' bs':''}" x="${nx-15+minDx-col*9}" y="${Y(n.step)+5}" text-anchor="middle">${n.show}</text>`; });
+          /* ties into this piece, from the previous piece (or from the left edge after a line break) */
+          if(tiedIn){ const px=prevSeg.a>=B0?L+(prevSeg.a-B0)*bw+24+8:L-14;
+            ns.forEach(n=>{ const y=Y(n.step)+(stemUp?5:-5), d=stemUp?7:-7; g+=`<path class="tie${n.bs?' bs':''}" d="M${px} ${y} Q${(px+nx-8)/2} ${y+d} ${nx-8+n.dx} ${y}"/>`; }); }
+          /* tie out to the next line */
+          if(nextSeg&&nextSeg.a>=B1){ ns.forEach(n=>{ const y=Y(n.step)+(stemUp?5:-5), d=stemUp?7:-7, sx=nx+8+maxDx; g+=`<path class="tie${n.bs?' bs':''}" d="M${sx} ${y} Q${(sx+xEnd)/2} ${y+d} ${xEnd-2} ${y}"/>`; }); }
+          const whole=val==='w', rx=whole?6.4:5.6, ry=whole?4.3:4;
+          ns.forEach(n=>{ const cx=nx+n.dx, cy=Y(n.step); g+=`<ellipse class="nh${n.bs?' bs':''}${val==='q'?' q':''}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(-18 ${cx} ${cy})"/>`; });
+          if(!whole){ const sx=stemUp?nx+5.2:nx-5.2, y1=stemUp?Y(lo):Y(hi), y2=stemUp?Y(hi)-28:Y(lo)+28; g+=`<line class="stem" x1="${sx}" x2="${sx}" y1="${y1}" y2="${y2}"/>`; }
+          if(val==='hd') ns.forEach(n=>{ g+=`<circle class="dot${n.bs?' bs':''}" cx="${nx+maxDx+10}" cy="${Y(n.step)-(n.step%2===0?4:0)}" r="1.9"/>`; });
+        }
+      });
       notes.slice().sort((a,b)=>a.m-b.m).forEach(n=>names.push((n.bs?'bass ':'')+spellNote(c,n.m,n.bs).name));
-      svg+=`<g class="sc${cont?' cont':''}" data-id="${c.id}"><title>${esc(sym(c))}: ${esc(names.join(' · '))}</title><rect class="hl" x="${x0-4}" y="${y0+4}" width="${w}" height="${SH-12}" rx="6"/><text class="sym" x="${x0+4}" y="${TT-22}">${cont?'('+sym(c)+')':sym(c)}</text>${(!cont&&c.sec)?`<rect class="rmk" x="${x0}" y="${y0+1}" width="${c.sec.length*7.2+12}" height="16" rx="4"/><text class="rmkt" x="${x0+6}" y="${y0+13}">${esc(c.sec)}</text>`:''}${g}</g>`;
+      svg+=`<g class="sc${cont?' cont':''}" data-id="${c.id}"><title>${esc(sym(c))}: ${esc(names.join(' · '))}</title><rect class="hl" x="${x0-4}" y="${y0+4}" width="${w}" height="${SH-12}" rx="6"/><text class="sym" x="${x0+4}" y="${TT-22}"${w<64?` style="font-size:${w<50?11:13}px"`:''}>${cont?'('+sym(c)+')':sym(c)}</text>${(!cont&&c.sec)?`<rect class="rmk" x="${x0}" y="${y0+1}" width="${c.sec.length*7.2+12}" height="16" rx="4"/><text class="rmkt" x="${x0+6}" y="${y0+13}">${esc(c.sec)}</text>`:''}${g}</g>`;
     });
   }
   svg+='</svg>';
