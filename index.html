@@ -351,6 +351,7 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 #auPlayer{width:100%;margin-top:10px}
 .pdfprev{display:flex;gap:10px;overflow-x:auto;margin-top:10px;padding-bottom:4px}
 .pdfprev img{height:220px;border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.4);background:#fff;flex:none}
+.tabwarn{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:65;background:#2a2414;border:1px solid #5c4a1f;color:#f3dfb0;border-radius:10px;padding:10px 14px;font-size:13.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:min(760px,94vw);box-shadow:0 10px 30px rgba(0,0,0,.4)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -632,6 +633,14 @@ let S=Object.assign({},DEF);
 try{const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d) S=Object.assign(S,d);}catch(e){}
 S.tk=Object.assign({},DEF.tk,S.tk||{}); S.dr=Object.assign({},DEF.dr,S.dr||{}); S.dr.pres=Object.assign({},DEF.dr.pres,S.dr.pres||{}); S.dr.mutes=S.dr.mutes||{};
 S.sel=null;
+window.addEventListener('storage',e=>{
+  if(e.key!==LS||document.getElementById('tabWarn')) return;
+  const d=document.createElement('div'); d.id='tabWarn'; d.className='tabwarn';
+  d.innerHTML='Changes is also open in another tab. Both tabs save to the same place, so edits in one overwrite the other. <button class="btn small" id="twReload">Load the other tab’s version</button><button class="btn small" id="twX">Keep this one</button>';
+  document.body.appendChild(d);
+  d.querySelector('#twReload').onclick=()=>location.reload();
+  d.querySelector('#twX').onclick=()=>{ d.remove(); persist(); };
+});
 function persist(){try{const {sel,multi,pendSec,...rest}=S; localStorage.setItem(LS,JSON.stringify(rest));}catch(e){} if(typeof renderDoc==='function'&&document.getElementById('docName')) try{renderDoc();}catch(e){}}
 const uid=()=>Math.random().toString(36).slice(2,9);
 
@@ -856,6 +865,7 @@ const DSTYLES={
   rock:{n:'Rock',sw:0,p:{kick:'3.....2.3.2.....',snare:'....3.......3...',ch:'3.2.3.2.3.2.3.2.',oh:'..............1.'}},
   funk:{n:'Funk',sw:10,p:{kick:'3..2......3..2..',snare:'....3..1.1..3..1',ch:'3121312131213121'}},
   hiphop:{n:'Hip-hop',sw:35,p:{kick:'3......2..3.....',snare:'....3.......3...',ch:'2.2.2.2.2.2.2.2.',oh:'..............1.'}},
+  edm:{n:'EDM (four on the floor)',sw:0,p:{kick:'3...3...3...3...',snare:'....3.......3...',oh:'..2...2...2...2.',ch:'.1.1.1.1.1.1.1.1',crash:'................'}},
 };
 const VEL=[0,.35,.7,1];
 function gridFor(style,meter){
@@ -1448,7 +1458,9 @@ function addPick(){
   insertChord(c, SEL.size>0); preview(c);
 }
 function editPick(fn){
-  if(SEL.size) commit(()=>selChords().forEach(fn));
+  if(SEL.size){ const n=SEL.size, i=selIdx(), was=n===1?sym(selChord()):'';
+    commit(()=>selChords().forEach(fn));
+    toast(n>1?`Changed ${n} selected chords — Ctrl/⌘+Z to undo`:`Chord ${i+1}: ${was} → ${sym(selChord())} — Ctrl/⌘+Z to undo`); }
   else { const o={root:S.pr,q:S.pq,bass:S.pb,beats:S.len}; fn(o); S.pr=o.root; S.pq=o.q; S.pb=o.bass; S.len=o.beats; persist(); renderPicker(); }
   return pickState();
 }
@@ -2152,6 +2164,7 @@ function pdfDialog(){
 
 /* ================= events ================= */
 document.addEventListener('click',e=>{const b=e.target.closest('button'); if(b&&e.detail>0) b.blur();});
+document.addEventListener('change',e=>{ if(e.target.tagName==='SELECT'&&!e.target.closest('.overlay')) setTimeout(()=>e.target.blur(),0); },true);
 $('#playBtn').onclick=toggle;
 $('#stopBtn').onclick=stop;
 $('#bpm').onchange=e=>{S.bpm=Math.max(40,Math.min(300,+e.target.value||110)); renderTop(); renderDoc(); persist();};
@@ -2266,7 +2279,7 @@ strip.addEventListener('click',e=>{
   const card=e.target.closest('.cc');
   if(!card){ if(SEL.size){clearSel(); renderProg(); renderPicker();} return; }
   const id=card.dataset.id, now=performance.now(), plain=!e.shiftKey&&!e.metaKey&&!e.ctrlKey&&!e.altKey;
-  if(plain&&LASTCLICK.id===id&&now-LASTCLICK.t<400){ LASTCLICK={id:null,t:0}; setSel([id]); renderProg(); renderPicker(); jumpTo(id); return; }
+  if(plain&&LASTCLICK.id===id&&now-LASTCLICK.t<400){ LASTCLICK={id:null,t:0}; clearSel(); renderProg(); renderPicker(); jumpTo(id); return; }
   LASTCLICK={id,t:now};
   if(e.shiftKey&&(ANCHOR||S.sel)){
     const a=S.prog.findIndex(c=>c.id===(ANCHOR||S.sel)), b=S.prog.findIndex(c=>c.id===id), keep=ANCHOR||S.sel;
