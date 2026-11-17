@@ -80,15 +80,20 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .opts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .opts select{padding:4px 8px;font-size:13px;border-radius:999px}
 .strip{display:flex;flex-wrap:wrap;gap:8px;min-height:116px;padding:12px;border:1px dashed var(--line2);border-radius:12px;background:#0b1019;align-content:flex-start}
-.cc{position:relative;width:calc(var(--beats) * var(--bw));min-width:92px;height:92px;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px 8px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .12s,box-shadow .12s}
-@media (max-width:700px){.cc{min-width:76px;height:84px}}
+.cc{position:relative;width:calc(var(--cw0) + var(--beats) * var(--cwb));height:92px;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px 8px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .12s,box-shadow .12s}
+:root{--cw0:40px;--cwb:22px}
+@media (max-width:700px){:root{--cw0:36px;--cwb:16px}.cc{height:84px}.cc{padding:8px 7px}}
+.cc.b1{padding:8px 6px}
+.cc.b1 .idx,.cc.b1 .ticks{display:none}
+.cc.b1 .sym{font-size:17px}.cc.b1 .sym.long{font-size:14px}.cc.b1 .sym.xl{font-size:12px}
+.cc.b1 .rn{font-size:10.5px}
 .cc:hover{border-color:#47557a}
 .cc .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,rgba(94,196,182,.06),rgba(94,196,182,.2));pointer-events:none}
 .cc .idx{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:10px;color:var(--dim)}
-.cc .sym{position:relative;font-family:var(--display);font-size:24px;line-height:1.1;white-space:nowrap;margin-top:6px}
+.cc .sym{position:relative;font-family:var(--display);font-size:24px;line-height:1.1;white-space:nowrap;margin-top:6px;overflow:hidden;text-overflow:ellipsis}
 .cc .sym.long{font-size:18px} .cc .sym.xl{font-size:15px}
 .cc .foot{position:relative;display:flex;align-items:center;justify-content:space-between;gap:6px}
-.cc .rn{font-family:var(--mono);font-size:12px;color:var(--brass);white-space:nowrap}
+.cc .rn{font-family:var(--mono);font-size:12px;color:var(--brass);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .cc .rn.out{color:var(--ref)}
 .cc .ticks{display:flex;gap:3px;flex-wrap:nowrap;overflow:hidden}
 .cc .ticks i{width:5px;height:5px;border-radius:50%;background:var(--line2);flex:none}
@@ -291,6 +296,9 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .menu{min-width:300px}
 .menu .mi{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 10px;border-radius:8px;color:var(--text);cursor:pointer;font:inherit}
 .menu .mi:hover{background:var(--panel2)}
+.menu .mi:disabled{opacity:.45;cursor:not-allowed;background:none}
+.menu .mhead+.mi{margin-top:0}
+.menu .mi+.mhead{border-top:1px solid var(--line);margin-top:6px;padding-top:10px}
 .menu .mi b{font-weight:600;font-size:14px}
 .menu .mi small{display:block;color:var(--muted);font-size:12px;margin-top:1px}
 .menu .mhead{font:500 11px var(--sans);text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:6px 10px 4px}
@@ -358,6 +366,8 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
       <span class="libwrap"><button class="btn small" id="dlBtn">Download ▾</button><div class="lib menu" id="dlMenu" hidden>
         <div class="mhead">This song</div>
         <button class="mi" data-dl="text"><b>Text</b><small>A readable chord chart to paste into a doc or notebook</small></button>
+        <div class="mhead">Saved progressions</div>
+        <button class="mi" data-dl="json" id="dlJson"><b>Export JSON…</b><small>Back up or move any of your saved progressions; bring them back with Open → Import JSON</small></button>
       </div></span>
     </div>
     <div class="phead">
@@ -628,7 +638,7 @@ function spellNote(c,m,isBass){
   if(isBass&&hasBass(c)){ const n=nm(m); sp={L:LETS.indexOf(n[0]),a:n.length>1?(n[1]==='♯'?1:-1):0}; }
   else { const t=Q[c.q].tones.find(t=>pcm(c.root+t.semi)===pcm(m)); if(t) sp=toneSpell(c,t); else { const n=nm(m); sp={L:LETS.indexOf(n[0]),a:n.length>1?(n[1]==='♯'?1:-1):0}; } }
   const oct=Math.floor((m-sp.a)/12)-1;
-  return {step:oct*7+sp.L,acc:accStr(sp.a),name:LETS[sp.L]+accStr(sp.a)+oct};
+  return {step:oct*7+sp.L,alt:sp.a,acc:accStr(sp.a),name:LETS[sp.L]+accStr(sp.a)+oct};
 }
 function chordPcs(c){return [...new Set(Q[c.q].iv.map(i=>pcm(c.root+i)))]}
 function inScale(pc){return MODES[S.mode].iv.includes(pcm(pc-S.key))}
@@ -904,7 +914,7 @@ function jumpTo(id){
   const i=S.prog.findIndex(c=>c.id===id); if(i<0) return;
   P.id=id; P.idx=i; P.beat=0; P.resume=true; P.g=0;
   if(P.playing){silence(); P.events=[]; P.next=ctx.currentTime+.05;}
-  else play();
+  else { if(ctx) silence(); play(); }
 }
 function tick(){ if(!P.playing||P.ending) return; while(P.next<ctx.currentTime+.12){ if(!scheduleBeat()) break; } }
 function scheduleBeat(){
@@ -987,6 +997,13 @@ function renderTop(){
   $('#previewBtn').classList.toggle('on',S.preview);
   if(!P.playing && P.id==null) $('#nowChip').innerHTML='';
 }
+function fitSyms(){
+  strip.querySelectorAll('.cc .sym').forEach(el=>{
+    el.style.fontSize=''; let fs=parseFloat(getComputedStyle(el).fontSize), n=0;
+    while(el.scrollWidth>el.clientWidth+0.5&&fs>11&&n++<20){ fs-=1; el.style.fontSize=fs+'px'; }
+  });
+}
+window.addEventListener('resize',()=>{ clearTimeout(window.__fitT); window.__fitT=setTimeout(()=>{ if(S.view!=='staff') fitSyms(); },120); });
 function renderProg(){
   const n=S.prog.length, beats=S.prog.reduce((a,c)=>a+c.beats,0);
   $('#progMeta').textContent=n?`${n} chord${n>1?'s':''} · ${+(beats/S.meter).toFixed(2)} bars`:'';
@@ -1002,11 +1019,12 @@ function renderProg(){
       hdr[x.start]=`<div class="sechead" data-sid="${x.id}" style="--sc:${colFor(x.label)}"><button class="secname${x.label?'':' untitled'}" data-sa="sel" title="Select this section">${x.label?esc(x.label):(x.label===''?'Untitled section':'Unlabeled')}</button><span class="secmeta">${+(b/S.meter).toFixed(2)} bar${b===S.meter?'':'s'} · ${nn} chord${nn>1?'s':''}</span><span class="secacts"><button data-sa="play" title="Play from this section">▶</button><button data-sa="copy">Copy</button><button data-sa="dup">Duplicate</button><button data-sa="ren">${x.label==null?'Label…':'Rename'}</button>${x.label!=null?'<button data-sa="rm" title="Remove this label; the chords join the section before">✕</button>':''}</span></div>`; });
     strip.innerHTML=S.prog.map((c,i)=>{
     const s=sym(c), r=roman(c), cls=s.length>9?'xl':s.length>6?'long':'';
-    return (hdr[i]||'')+`<div class="cc${SEL.has(c.id)?' sel':''}" data-id="${c.id}" style="--beats:${c.beats}${cmap[i]?';--sc:'+cmap[i]:''}"><div class="fill"></div><span class="idx">${i+1}</span><div class="sym ${cls}">${s}</div><div class="foot"><span class="rn${r.dia?'':' out'}" title="${r.dia?'Diatonic to the mode':'Borrowed / chromatic'}">${r.t}</span><span class="ticks">${'<i></i>'.repeat(Math.min(c.beats,8))}</span></div></div>`;
+    return (hdr[i]||'')+`<div class="cc${SEL.has(c.id)?' sel':''}${c.beats===1?' b1':''}" data-id="${c.id}" title="${esc(s)} · ${c.beats} beat${c.beats>1?'s':''}" style="--beats:${c.beats}${cmap[i]?';--sc:'+cmap[i]:''}"><div class="fill"></div><span class="idx">${i+1}</span><div class="sym ${cls}">${s}</div><div class="foot"><span class="rn${r.dia?'':' out'}" title="${r.dia?'Diatonic to the mode':'Borrowed / chromatic'}">${r.t}</span><span class="ticks">${'<i></i>'.repeat(Math.min(c.beats,8))}</span></div></div>`;
   }).join(''); }
   if(S.pendSec!=null) strip.insertAdjacentHTML('beforeend',`<div class="sechead pend" style="--sc:var(--brass)"><button class="secname${S.pendSec?'':' untitled'}" data-pa="ren" title="Rename">${S.pendSec?esc(S.pendSec):'New section'}</button><span class="secmeta">waiting for chords</span><span class="secacts"><button data-pa="ren">${S.pendSec?'Rename':'Name it'}</button><button data-pa="cancel" title="Cancel the new section">✕</button></span></div><div class="pendslot">Chords you add now start ${S.pendSec?'“'+esc(S.pendSec)+'”':'this new section'}.</div>`);
   else strip.insertAdjacentHTML('beforeend','<button class="newsec" data-pa="new" title="Start a new section at the end">＋ New section</button>');
   UI.el=null; UI.sid=null;
+  if(!staff) fitSyms();
   if(staff) renderStaff();
   const sb=$('#selbar'), k=SEL.size, clipN=S.clip?S.clip.length:0;
   if(k&&!staff){
@@ -1087,7 +1105,7 @@ function renderLib(){
   $('#lib').innerHTML=names.length?names.map(n=>{const v=S.saved[n]; const nb=(v.prog||[]).length;
     return `<div class="li${n===S.cur?' cur':''}"><button class="o" data-open="${esc(n)}">${esc(n)}<small>${nb} chord${nb===1?'':'s'} · ${KEYN[v.key]||''} ${MODES[v.mode]?MODES[v.mode].n.split(' (')[0]:''}${n===S.cur?' · open now':''}</small></button><button class="d" data-delname="${esc(n)}" title="Delete “${esc(n)}”">Delete</button></div>`;}).join('')
     :'<div class="none">Nothing saved yet. Use Save to keep this progression.</div>';
-  $('#lib').insertAdjacentHTML('beforeend',`<div class="foot"><button class="btn small" data-x="export" ${names.length?'':'disabled'}>⇡ Export JSON…</button><button class="btn small" data-x="import">⇣ Import JSON…</button></div>`);
+  $('#lib').insertAdjacentHTML('beforeend',`<div class="foot"><button class="btn small" data-x="import">⇣ Import JSON…</button></div>`);
 }
 function dialog({title,text,input,value,buttons}){
   return new Promise(res=>{
@@ -1195,6 +1213,13 @@ function uniqueName(n){ if(!S.saved[n]) return n; let i=2; while(S.saved[`${n} (
 function overlay(html,onClose){ const ov=document.createElement('div'); ov.className='overlay'; ov.innerHTML=`<div class="dlg wide">${html}</div>`; document.body.appendChild(ov);
   const close=()=>{document.removeEventListener('keydown',kd,true); ov.remove(); if(onClose) onClose();}; const kd=e=>{ if(e.key==='Escape'){e.stopPropagation(); close();} };
   document.addEventListener('keydown',kd,true); ov.addEventListener('click',e=>{ if(e.target===ov) close(); }); return {ov,close}; }
+const slugify=t=>String(t||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/['’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60).replace(/-+$/,'');
+function exportFilename(names){
+  const sl=names.map(n=>slugify(n)||'untitled');
+  if(sl.length===1) return `${sl[0]}-progression.json`;
+  const d=new Date(), p2=n=>String(n).padStart(2,'0');
+  return `changes-progressions-${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}.json`;
+}
 function exportDialog(){
   const names=Object.keys(S.saved).sort((a,b)=>(S.saved[b].at||0)-(S.saved[a].at||0));
   if(!names.length){toast('Save a progression first'); return;}
@@ -1203,16 +1228,16 @@ function exportDialog(){
     <div class="xlist"><label class="all"><input type="checkbox" id="xAll" checked> All saved progressions <small>${names.length}</small></label>
     ${names.map(n=>`<label><input type="checkbox" class="xi" value="${esc(n)}" checked> ${esc(n)} <small>${S.saved[n].prog.length} chords</small></label>`).join('')}</div>
     <textarea readonly id="xTxt" style="min-height:150px"></textarea>
-    <div class="dbtns"><button class="btn small" data-c>Close</button><button class="btn small" id="xDl">Download .json</button><button class="btn small primary" id="xCopy">Copy JSON</button></div>
+    <div class="dbtns"><span class="muted mono" id="xName" style="font-size:12px;margin-right:auto;align-self:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%"></span><button class="btn small" data-c>Close</button><button class="btn small" id="xDl">Download .json</button><button class="btn small primary" id="xCopy">Copy JSON</button></div>
     <p class="hint" style="margin-top:8px">${framed?'Downloads may be blocked inside the Claude viewer. If nothing downloads, use Copy JSON and paste it into a file, or export from your GitHub Pages site.':''}</p>`);
   const sel=()=>[...ov.querySelectorAll('.xi:checked')].map(i=>i.value);
-  const upd=()=>{ const s=sel(); ov.querySelector('#xTxt').value=s.length?exportData(s):''; ov.querySelector('#xAll').checked=s.length===names.length; ov.querySelector('#xCopy').disabled=ov.querySelector('#xDl').disabled=!s.length; };
+  const upd=()=>{ const s=sel(); ov.querySelector('#xTxt').value=s.length?exportData(s):''; ov.querySelector('#xAll').checked=s.length===names.length; ov.querySelector('#xCopy').disabled=ov.querySelector('#xDl').disabled=!s.length; const fn=ov.querySelector('#xName'); fn.textContent=s.length?exportFilename(s):''; fn.title=fn.textContent; };
   ov.querySelector('#xAll').onchange=e=>{ ov.querySelectorAll('.xi').forEach(i=>i.checked=e.target.checked); upd(); };
   ov.querySelectorAll('.xi').forEach(i=>i.onchange=upd); upd();
   ov.querySelector('[data-c]').onclick=close;
   ov.querySelector('#xCopy').onclick=async()=>{ const t=ov.querySelector('#xTxt'); try{ await navigator.clipboard.writeText(t.value); toast(`Copied ${sel().length} progression${sel().length>1?'s':''} as JSON`); }catch(e){ t.focus(); t.select(); toast('Press Ctrl/⌘+C to copy the selected text'); } };
   ov.querySelector('#xDl').onclick=()=>{ try{ const blob=new Blob([ov.querySelector('#xTxt').value],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-      a.download=`changes-progressions-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); }catch(e){ toast('Download isn’t available here — use Copy JSON'); } };
+      a.download=exportFilename(sel()); document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); }catch(e){ toast('Download isn’t available here — use Copy JSON'); } };
 }
 function importDialog(){
   const {ov,close}=overlay(`<h3>Import progressions</h3><p>Choose a .json file exported from Changes, or paste its contents. Imported progressions are added to your saved list; what’s on screen isn’t touched.</p>
@@ -1268,6 +1293,7 @@ function renderStaff(){
   const W=Math.max(320,box.clientWidth||strip.clientWidth||900), L=48, avail=W-L-10;
   const bps=Math.max(1,Math.floor(avail/(m*34))), bw=avail/(bps*m), sysB=bps*m, nsys=Math.ceil(T/sysB), SH=186;
   const starts=[]; let acc=0; for(const c of p){starts.push(acc); acc+=c.beats;}
+  const ACC=new Map(); /* `${bar}:${staffStep}` → alteration in effect */
   let svg=`<svg width="${W}" height="${nsys*SH}" viewBox="0 0 ${W} ${nsys*SH}" xmlns="http://www.w3.org/2000/svg">`;
   for(let k=0;k<nsys;k++){
     const y0=k*SH, TT=y0+54, BT=TT+76, B0=k*sysB, B1=Math.min(T,B0+sysB), xEnd=L+(B1-B0)*bw;
@@ -1279,19 +1305,21 @@ function renderStaff(){
     for(let b=Math.ceil((B0+1)/m)*m;b<=B1;b+=m){const x=L+(b-B0)*bw-2; svg+=`<line class="bar" x1="${x}" x2="${x}" y1="${TT}" y2="${BT+32}"/>`; if(b===T&&(!S.loop||true)) svg+=`<line class="bar" x1="${x-3}" x2="${x-3}" y1="${TT}" y2="${BT+32}"/>`;}
     p.forEach((c,ci)=>{
       const s0=starts[ci], s1=s0+c.beats; if(s1<=B0||s0>=B1) return;
-      const cont=s0<B0, a0=Math.max(s0,B0), x0=L+(a0-B0)*bw, w=(Math.min(s1,B1)-a0)*bw, nx=x0+24;
+      const cont=s0<B0, a0=Math.max(s0,B0), x0=L+(a0-B0)*bw, w=(Math.min(s1,B1)-a0)*bw, nx=x0+24, bar=Math.floor(a0/m);
       const up=plan.v[ci]||[], bm=S.bass?bassMidi(c):null;
       const notes=up.map(mm=>({m:mm,bs:false})); if(bm!=null) notes.push({m:bm,bs:true});
       const names=[]; let g='';
       for(const staff of ['t','b']){
         const ns=notes.filter(n=>(staff==='t')===(n.m>=60)).map(n=>({...n,...spellNote(c,n.m,n.bs)})).sort((a,b)=>a.step-b.step||a.m-b.m);
+        /* an accidental lasts until the bar line at that staff position: show it only when it changes, and cancel with ♮ */
+        ns.forEach(n=>{ const k=bar+':'+n.step, cur=ACC.has(k)?ACC.get(k):0; n.show=n.alt!==cur?(n.alt===0?'♮':n.acc):''; ACC.set(k,n.alt); });
         const Y=staff==='t'?yT:yB;
         let prevStep=-99, prevOff=false;
         ns.forEach(n=>{ n.off=(n.step-prevStep<=1&&!prevOff); prevOff=n.off; prevStep=n.step; });
         const lg=new Set();
         ns.forEach(n=>{ if(staff==='t'){ for(let l=28;l>=n.step;l-=2) lg.add(l); for(let l=40;l<=n.step;l+=2) lg.add(l);} else { for(let l=16;l>=n.step;l-=2) lg.add(l); for(let l=28;l<=n.step;l+=2) lg.add(l);} });
         lg.forEach(l=>{ g+=`<line class="lg" x1="${nx-9}" x2="${nx+(ns.some(n=>n.off)?20:9)}" y1="${Y(l)}" y2="${Y(l)}"/>`; });
-        const accCols=[]; [...ns].reverse().forEach(n=>{ if(!n.acc) return; let col=0; while(accCols.some(a=>a.col===col&&Math.abs(a.step-n.step)<6)) col++; accCols.push({col,step:n.step}); g+=`<text class="acc${n.bs?' bs':''}" x="${nx-15-col*9}" y="${Y(n.step)+5}" text-anchor="middle">${n.acc}</text>`; });
+        const accCols=[]; [...ns].reverse().forEach(n=>{ if(!n.show) return; let col=0; while(accCols.some(a=>a.col===col&&Math.abs(a.step-n.step)<6)) col++; accCols.push({col,step:n.step}); g+=`<text class="acc${n.bs?' bs':''}" x="${nx-15-col*9}" y="${Y(n.step)+5}" text-anchor="middle">${n.show}</text>`; });
         ns.forEach(n=>{ g+=`<ellipse class="nh${n.bs?' bs':''}" cx="${nx+(n.off?11:0)}" cy="${Y(n.step)}" rx="5.6" ry="4" transform="rotate(-18 ${nx+(n.off?11:0)} ${Y(n.step)})"/>`; });
       }
       notes.slice().sort((a,b)=>a.m-b.m).forEach(n=>names.push((n.bs?'bass ':'')+spellNote(c,n.m,n.bs).name));
@@ -1844,8 +1872,8 @@ $('#lib').onclick=e=>{
   else if(x){ $('#lib').hidden=true; x.dataset.x==='export'?exportDialog():importDialog(); }
 };
 document.addEventListener('click',e=>{ if(e.target.closest('.overlay')) return; const w=e.target.closest('.libwrap'); document.querySelectorAll('.libwrap > .lib').forEach(m=>{ if(!w||!w.contains(m)) m.hidden=true; }); });
-$('#dlBtn').onclick=e=>{ e.stopPropagation(); $('#lib').hidden=true; const m=$('#dlMenu'); m.hidden=!m.hidden; };
-$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); };
+$('#dlBtn').onclick=e=>{ e.stopPropagation(); $('#lib').hidden=true; const m=$('#dlMenu'); m.hidden=!m.hidden; if(!m.hidden){ const n=Object.keys(S.saved).length, j=$('#dlJson'); j.disabled=!n; j.querySelector('small').textContent=n?`Back up or move any of your ${n} saved progression${n>1?'s':''}; bring them back with Open → Import JSON`:'Save a progression first, then export it here'; } };
+$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); else if(b.dataset.dl==='json') exportDialog(); };
 $('#viewSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.view=b.dataset.v; persist(); renderProg();};
 $('#selAllBtn').onclick=selectAll;
 $('#multiBtn').onclick=()=>{S.multi=!S.multi; renderProg();};
@@ -1923,7 +1951,7 @@ window.addEventListener('pointermove',e=>{
 window.addEventListener('pointerup',()=>{if(paint){paint=null; persist();}});
 
 /* strip: select, marquee, jump, drag */
-let drag=null, justDragged=false, marq=null;
+let drag=null, justDragged=false, marq=null; var LASTCLICK={id:null,t:0};
 strip.addEventListener('click',e=>{
   if(justDragged) return;
   const pa=e.target.closest('[data-pa]'); if(pa){ pendAction(pa.dataset.pa); return; }
@@ -1932,7 +1960,9 @@ strip.addEventListener('click',e=>{
   if(sh){ const b=e.target.closest('[data-sa]'); if(b) sectionAction(sh.dataset.sid,b.dataset.sa); return; }
   const card=e.target.closest('.cc');
   if(!card){ if(SEL.size){clearSel(); renderProg(); renderPicker();} return; }
-  const id=card.dataset.id;
+  const id=card.dataset.id, now=performance.now(), plain=!e.shiftKey&&!e.metaKey&&!e.ctrlKey&&!e.altKey;
+  if(plain&&LASTCLICK.id===id&&now-LASTCLICK.t<400){ LASTCLICK={id:null,t:0}; setSel([id]); renderProg(); renderPicker(); jumpTo(id); return; }
+  LASTCLICK={id,t:now};
   if(e.shiftKey&&(ANCHOR||S.sel)){
     const a=S.prog.findIndex(c=>c.id===(ANCHOR||S.sel)), b=S.prog.findIndex(c=>c.id===id), keep=ANCHOR||S.sel;
     const [lo,hi]=a<b?[a,b]:[b,a]; setSel(S.prog.slice(lo,hi+1).map(c=>c.id),id); ANCHOR=keep;
@@ -1943,7 +1973,6 @@ strip.addEventListener('click',e=>{
   renderProg(); renderPicker();
   if(SEL.size===1&&SEL.has(id)) preview(selChord());
 });
-strip.addEventListener('dblclick',e=>{const card=e.target.closest('.cc'); if(card){ setSel([card.dataset.id]); renderProg(); renderPicker(); jumpTo(card.dataset.id);} });
 strip.addEventListener('pointerdown',e=>{
   if(e.button>0) return;
   const card=e.target.closest('.cc');
