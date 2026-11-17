@@ -386,6 +386,7 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
         <div class="mhead">This song</div>
         <button class="mi" data-dl="text"><b>Text</b><small>A readable chord chart to paste into a doc or notebook</small></button>
         <button class="mi" data-dl="pdf"><b>PDF</b><small>Sheet music of the Staff view, ready to print</small></button>
+        <button class="mi" data-dl="musicxml"><b>MusicXML</b><small>Open in MuseScore, Finale, Sibelius or Dorico, with editable chord symbols</small></button>
         <button class="mi" data-dl="mp3"><b>Audio (MP3)</b><small>The song played back with your sound, drums and takes</small></button>
         <div class="mhead">Saved progressions</div>
         <button class="mi" data-dl="json" id="dlJson"><b>Export JSON…</b><small>Back up or move any of your saved progressions; bring them back with Open → Import JSON</small></button>
@@ -2178,6 +2179,85 @@ function pdfDialog(){
   })();
 }
 
+/* ================= MusicXML ================= */
+/* chord types as MusicXML harmony: kind, display text, extra degrees [value, alter, type] */
+const MXL_KIND={
+  maj:['major',''],m:['minor','m'],dim:['diminished','dim'],aug:['augmented','+'],sus2:['suspended-second','sus2'],sus4:['suspended-fourth','sus4'],
+  '6':['major-sixth','6'],m6:['minor-sixth','m6'],maj7:['major-seventh','maj7'],'7':['dominant','7'],m7:['minor-seventh','m7'],
+  m7b5:['half-diminished','m7b5'],dim7:['diminished-seventh','dim7'],mmaj7:['major-minor','mMaj7'],'7sus4':['suspended-fourth','7sus4',[[7,-1,'add']]],
+  add9:['major','add9',[[9,0,'add']]],'69':['major-sixth','6/9',[[9,0,'add']]],'9':['dominant-ninth','9'],maj9:['major-ninth','maj9'],m9:['minor-ninth','m9'],
+  '9sus4':['suspended-fourth','9sus4',[[7,-1,'add'],[9,0,'add']]],'11':['dominant-11th','11'],m11:['minor-11th','m11'],'13':['dominant-13th','13'],maj13:['major-13th','maj13'],
+  '7b9':['dominant','7b9',[[9,-1,'add']]],'7#9':['dominant','7#9',[[9,1,'add']]],'7#11':['dominant','7#11',[[11,1,'add']]],'7b13':['dominant','7b13',[[13,-1,'add']]],
+  '7alt':['dominant','7alt',[[9,-1,'add'],[9,1,'add'],[11,1,'add'],[13,-1,'add']]],aug7:['augmented-seventh','7#5'],'maj7#5':['augmented','maj7#5',[[7,0,'add']]],
+  'maj7#11':['major-seventh','maj7#11',[[11,1,'add']]],
+};
+const xe=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function pcSpell(pc){ const n=nm(pc); return {step:n[0],alter:n.length>1?(n[1]==='♯'?1:-1):0}; }
+function musicXml(){
+  const p=S.prog, m=S.meter, plan=voicePlan(), ks=keySig(), T=p.reduce((a,c)=>a+c.beats,0), nbars=Math.ceil(T/m);
+  const TYPES={1:['quarter',0],2:['half',0],3:['half',1],4:['whole',0]};
+  const modeName=({ionian:'major',aeolian:'minor',harmonic:'minor',melodic:'minor'})[S.mode]||S.mode;
+  /* split chords into bar-sized pieces */
+  const bars=Array.from({length:nbars},()=>[]); let at=0;
+  p.forEach((c,ci)=>{ const segs=[]; for(let a=at;a<at+c.beats;){ const b=Math.min(at+c.beats,(Math.floor(a/m)+1)*m); segs.push({ci,a,len:b-a}); a=b; }
+    segs.forEach((sg,i)=>{ sg.tieIn=i>0; sg.tieOut=i<segs.length-1; bars[Math.floor(sg.a/m)].push(sg); }); at+=c.beats; });
+  const notesFor=(ci,staff)=>{ const c=p[ci], up=plan.v[ci]||[], bm=S.bass?bassMidi(c):null, ns=up.map(x=>({m:x,bs:false})); if(bm!=null) ns.push({m:bm,bs:true});
+    return ns.filter(n=>(staff===1)===(n.m>=60)).sort((a,b)=>a.m-b.m).map(n=>{ const sp=spellNote(c,n.m,n.bs); return {letter:LETS[((sp.step%7)+7)%7],oct:Math.floor(sp.step/7),alt:sp.alt}; }); };
+  const typeXml=len=>{ const [t,d]=TYPES[len]||['whole',0]; return `<type>${t}</type>${d?'<dot/>':''}`; };
+  const restXml=(len,voice,staff,whole)=>`<note>${whole?'<rest measure="yes"/>':'<rest/>'}<duration>${len}</duration><voice>${voice}</voice>${whole?'':typeXml(len)}<staff>${staff}</staff></note>`;
+  const noteXml=(n,i,len,voice,staff,tieIn,tieOut)=>`<note>${i?'<chord/>':''}<pitch><step>${n.letter}</step>${n.alt?`<alter>${n.alt}</alter>`:''}<octave>${n.oct}</octave></pitch><duration>${len}</duration>${tieIn?'<tie type="stop"/>':''}${tieOut?'<tie type="start"/>':''}<voice>${voice}</voice>${typeXml(len)}<staff>${staff}</staff>${tieIn||tieOut?`<notations>${tieIn?'<tied type="stop"/>':''}${tieOut?'<tied type="start"/>':''}</notations>`:''}</note>`;
+  const harmonyXml=c=>{ const k=MXL_KIND[c.q]||['other',Q[c.q].s], r=pcSpell(c.root);
+    let h=`<harmony><root><root-step>${r.step}</root-step>${r.alter?`<root-alter>${r.alter}</root-alter>`:''}</root><kind text="${xe(k[1])}">${k[0]}</kind>`;
+    if(hasBass(c)){ const b=pcSpell(c.bass); h+=`<bass><bass-step>${b.step}</bass-step>${b.alter?`<bass-alter>${b.alter}</bass-alter>`:''}</bass>`; }
+    for(const [v,al,ty] of (k[2]||[])) h+=`<degree><degree-value>${v}</degree-value><degree-alter>${al}</degree-alter><degree-type>${ty}</degree-type></degree>`;
+    return h+'</harmony>'; };
+  let out='';
+  bars.forEach((segs,b)=>{
+    let x=`<measure number="${b+1}">`;
+    if(b===0) x+=`<attributes><divisions>1</divisions><key><fifths>${ks.t*ks.n}</fifths><mode>${modeName}</mode></key><time><beats>${m}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>`
+      +`<direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${S.bpm}</per-minute></metronome></direction-type><staff>1</staff><sound tempo="${S.bpm}"/></direction>`;
+    const used=segs.reduce((a,sg)=>a+sg.len,0), pad=m-used;
+    for(const staff of [1,2]){
+      const voice=staff===1?1:5;
+      if(staff===2) x+=`<backup><duration>${used+Math.max(0,pad)}</duration></backup>`;
+      for(const sg of segs){
+        const c=p[sg.ci];
+        if(staff===1&&!sg.tieIn){ if(c.sec) x+=`<direction placement="above"><direction-type><rehearsal>${xe(c.sec||'Section')}</rehearsal></direction-type><staff>1</staff></direction>`; x+=harmonyXml(c); }
+        const ns=notesFor(sg.ci,staff);
+        x+= ns.length ? ns.map((n,i)=>noteXml(n,i,sg.len,voice,staff,sg.tieIn,sg.tieOut)).join('') : restXml(sg.len,voice,staff,false);
+      }
+      if(pad>0) x+=restXml(pad,voice,staff,false);
+    }
+    if(b===nbars-1) x+='<barline location="right"><bar-style>light-heavy</bar-style></barline>';
+    out+=x+'</measure>\n';
+  });
+  const title=S.cur||'Untitled', d=new Date(), ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">
+<work><work-title>${xe(title)}</work-title></work>
+<movement-title>${xe(title)}</movement-title>
+<identification><encoding><software>Changes — Chord Progression Builder</software><encoding-date>${ds}</encoding-date></encoding></identification>
+<part-list><score-part id="P1"><part-name>Piano</part-name><score-instrument id="P1-I1"><instrument-name>Piano</instrument-name></score-instrument></score-part></part-list>
+<part id="P1">
+${out}</part>
+</score-partwise>
+`;
+}
+function musicXmlDialog(){
+  if(!S.prog.length){toast('Add some chords first'); return;}
+  const framed=window.self!==window.top, name=`${slugify(S.cur||'untitled')||'untitled'}.musicxml`;
+  const xml=musicXml(), bars=(xml.match(/<measure /g)||[]).length, passNote=voicePlan().diff.length?` Voicings follow the Staff view’s ${staffPass==='first'?'“First time”':'“On repeat”'} setting.`:'';
+  const {ov,close}=overlay(`<h3>MusicXML${S.cur?' — '+esc(S.cur):''}</h3>
+    <p>A piano score on two staves with the exact voicings from the Staff view, editable chord symbols, key and time signatures, tempo and section rehearsal marks.${passNote} In MuseScore use File → Open (or Import) and choose the .musicxml file.</p>
+    <div class="austat">${bars} bar${bars>1?'s':''} · ${(new Blob([xml]).size/1024).toFixed(0)} KB${framed?'':' · '+esc(name)}</div>
+    <div class="dbtns"><button class="btn small" data-c>Close</button><button class="btn small" id="mxCopy">Copy XML</button>${framed?'':'<button class="btn small primary" id="mxDl">Download .musicxml</button>'}</div>
+    ${framed?'<p class="hint" style="margin-top:8px">The Claude viewer blocks downloads. To save the file, use Changes from GitHub Pages or the downloaded index.html — or Copy XML and paste it into a text file named song.musicxml.</p>':''}`);
+  ov.querySelector('[data-c]').onclick=close;
+  ov.querySelector('#mxCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(xml); toast('MusicXML copied'); }catch(e){ toast('Copy isn’t available here'); } };
+  const dl=ov.querySelector('#mxDl'); if(dl) dl.onclick=()=>{ const url=URL.createObjectURL(new Blob([xml],{type:'application/vnd.recordare.musicxml+xml'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},1000); };
+}
+
 /* ================= events ================= */
 document.addEventListener('click',e=>{const b=e.target.closest('button'); if(b&&e.detail>0) b.blur();});
 document.addEventListener('change',e=>{ if(e.target.tagName==='SELECT'&&!e.target.closest('.overlay')) setTimeout(()=>e.target.blur(),0); },true);
@@ -2207,7 +2287,7 @@ $('#lib').onclick=e=>{
 };
 document.addEventListener('click',e=>{ if(e.target.closest('.overlay')) return; const w=e.target.closest('.libwrap'); document.querySelectorAll('.libwrap > .lib').forEach(m=>{ if(!w||!w.contains(m)) m.hidden=true; }); });
 $('#dlBtn').onclick=e=>{ e.stopPropagation(); $('#lib').hidden=true; const m=$('#dlMenu'); m.hidden=!m.hidden; if(!m.hidden){ const n=Object.keys(S.saved).length, j=$('#dlJson'); j.disabled=!n; j.querySelector('small').textContent=n?`Back up or move any of your ${n} saved progression${n>1?'s':''}; bring them back with Open → Import JSON`:'Save a progression first, then export it here'; } };
-$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); else if(b.dataset.dl==='mp3') audioDialog(); else if(b.dataset.dl==='pdf') pdfDialog(); else if(b.dataset.dl==='json') exportDialog(); };
+$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); else if(b.dataset.dl==='mp3') audioDialog(); else if(b.dataset.dl==='pdf') pdfDialog(); else if(b.dataset.dl==='musicxml') musicXmlDialog(); else if(b.dataset.dl==='json') exportDialog(); };
 $('#viewSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.view=b.dataset.v; persist(); renderProg();};
 $('#selAllBtn').onclick=selectAll;
 $('#multiBtn').onclick=()=>{S.multi=!S.multi; renderProg();};
