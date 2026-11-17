@@ -352,6 +352,14 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .pdfprev{display:flex;gap:10px;overflow-x:auto;margin-top:10px;padding-bottom:4px}
 .pdfprev img{height:220px;border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.4);background:#fff;flex:none}
 .tabwarn{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:65;background:#2a2414;border:1px solid #5c4a1f;color:#f3dfb0;border-radius:10px;padding:10px 14px;font-size:13.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:min(760px,94vw);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.sechead{cursor:grab;touch-action:none}
+.sechead .grip{color:var(--dim);font-size:14px;margin-right:-4px;user-select:none}
+.sechead:hover .grip{color:var(--muted)}
+.secacts button:disabled{opacity:.35;cursor:default}
+.secmoving{opacity:.35}
+.secdrop{position:absolute;left:8px;right:8px;height:3px;border-radius:2px;background:var(--brass);box-shadow:0 0 0 3px rgba(217,164,65,.18);pointer-events:none;z-index:4;transition:top .08s}
+.secghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--sc);border-radius:8px;padding:6px 12px;box-shadow:0 14px 34px rgba(0,0,0,.5);font-size:13px;color:var(--muted)}
+.secghost b{font:600 15px var(--display);color:var(--text)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -1056,8 +1064,8 @@ function renderProg(){
     const secs=hasSections()?sections():[], hdr={}, colOf={}, labs=[];
     secs.forEach(x=>{ const key=(x.label||'').trim().toLowerCase(); if(x.label&&!(key in colOf)){ colOf[key]=SECCOL[labs.length%SECCOL.length]; labs.push(key);} });
     const colFor=l=>l?colOf[l.trim().toLowerCase()]:'var(--line2)';
-    const cmap=[]; secs.forEach(x=>{ for(let i=x.start;i<=x.end;i++) cmap[i]=colFor(x.label); const b=S.prog.slice(x.start,x.end+1).reduce((a,c)=>a+c.beats,0), nn=x.end-x.start+1;
-      hdr[x.start]=`<div class="sechead" data-sid="${x.id}" style="--sc:${colFor(x.label)}"><button class="secname${x.label?'':' untitled'}" data-sa="sel" title="Select this section">${x.label?esc(x.label):(x.label===''?'Untitled section':'Unlabeled')}</button><span class="secmeta">${+(b/S.meter).toFixed(2)} bar${b===S.meter?'':'s'} · ${nn} chord${nn>1?'s':''}</span><span class="secacts"><button data-sa="play" title="Play from this section">▶</button><button data-sa="copy">Copy</button><button data-sa="dup">Duplicate</button><button data-sa="ren">${x.label==null?'Label…':'Rename'}</button>${x.label!=null?'<button data-sa="rm" title="Remove this label; the chords join the section before">✕</button>':''}</span></div>`; });
+    const cmap=[]; secs.forEach((x,si)=>{ for(let i=x.start;i<=x.end;i++) cmap[i]=colFor(x.label); const b=S.prog.slice(x.start,x.end+1).reduce((a,c)=>a+c.beats,0), nn=x.end-x.start+1;
+      hdr[x.start]=`<div class="sechead" data-sid="${x.id}" style="--sc:${colFor(x.label)}" title="Drag to move this section"><span class="grip" aria-hidden="true">⠿</span><button class="secname${x.label?'':' untitled'}" data-sa="sel" title="Select this section">${x.label?esc(x.label):(x.label===''?'Untitled section':'Unlabeled')}</button><span class="secmeta">${+(b/S.meter).toFixed(2)} bar${b===S.meter?'':'s'} · ${nn} chord${nn>1?'s':''}</span><span class="secacts"><button data-sa="up" title="Move this section earlier" ${si===0?'disabled':''}>↑</button><button data-sa="down" title="Move this section later" ${si===secs.length-1?'disabled':''}>↓</button><button data-sa="play" title="Play from this section">▶</button><button data-sa="copy">Copy</button><button data-sa="dup">Duplicate</button><button data-sa="ren">${x.label==null?'Label…':'Rename'}</button>${x.label!=null?'<button data-sa="rm" title="Remove this label; the chords join the section before">✕</button>':''}</span></div>`; });
     strip.innerHTML=S.prog.map((c,i)=>{
     const s=sym(c), r=roman(c), cls=s.length>9?'xl':s.length>6?'long':'';
     return (hdr[i]||'')+`<div class="cc${SEL.has(c.id)?' sel':''}${c.beats===1?' b1':''}" data-id="${c.id}" title="${esc(s)} · ${c.beats} beat${c.beats>1?'s':''}" style="--beats:${c.beats}${cmap[i]?';--sc:'+cmap[i]:''}"><div class="fill"></div><span class="idx">${i+1}</span><div class="sym ${cls}">${s}</div><div class="foot"><span class="rn${r.dia?'':' out'}" title="${r.dia?'Diatonic to the mode':'Borrowed / chromatic'}">${r.t}</span><span class="ticks">${'<i></i>'.repeat(Math.min(c.beats,8))}</span></div></div>`;
@@ -1608,8 +1616,22 @@ async function pendAction(a){
 }
 function secById(id){ return sections().find(x=>x.id===id); }
 function selectSection(x){ setSel(S.prog.slice(x.start,x.end+1).map(c=>c.id),S.prog[x.end].id); ANCHOR=S.prog[x.start].id; }
+/* move a whole section; every block keeps its own boundary (an unlabeled lead-in becomes "Untitled") */
+function moveSection(from,to){
+  const secs=sections(); if(from<0||from>=secs.length||to===from||to===from+1) return false;
+  const label=secs[from].label;
+  commit(()=>{
+    const blocks=secs.map(x=>S.prog.slice(x.start,x.end+1));
+    blocks.forEach(b=>{ if(b[0].sec==null) b[0].sec=''; });
+    const [blk]=blocks.splice(from,1); blocks.splice(to>from?to-1:to,0,blk);
+    S.prog=blocks.flat();
+  });
+  toast(`Moved ${label?'“'+label+'”':'section'}`);
+  return true;
+}
 async function sectionAction(id,act){
   const x=secById(id); if(!x) return;
+  if(act==='up'||act==='down'){ const i=sections().findIndex(s=>s.id===id); moveSection(i,act==='up'?i-1:i+2); return; }
   if(act==='sel'){ selectSection(x); renderProg(); renderPicker(); }
   else if(act==='play'){ jumpTo(id); }
   else if(act==='copy'){ selectSection(x); copySel(true); renderPicker(); toast(`Copied ${x.label||'section'} (${x.end-x.start+1} chords). Select where it goes, then Paste.`); }
@@ -2483,6 +2505,53 @@ function endPointer(e){
   }
   drag=null;
 }
+/* drag a section by its header */
+let sdrag=null;
+strip.addEventListener('pointerdown',e=>{
+  const h=e.target.closest('.sechead'); if(!h||e.button>0||e.target.closest('.secacts')||h.classList.contains('pend')) return;
+  sdrag={h,id:h.dataset.sid,x0:e.clientX,y0:e.clientY,on:false,to:null};
+});
+function secSpans(){
+  return [...strip.querySelectorAll('.sechead:not(.pend)')].map(h=>{
+    const id=h.dataset.sid, x=secById(id); let bottom=h.getBoundingClientRect().bottom;
+    if(x) for(let i=x.start;i<=x.end;i++){ const c=strip.querySelector(`.cc[data-id="${S.prog[i].id}"]`); if(c) bottom=Math.max(bottom,c.getBoundingClientRect().bottom); }
+    return {id,top:h.getBoundingClientRect().top,bottom};
+  });
+}
+window.addEventListener('pointermove',e=>{
+  if(!sdrag) return;
+  if(!sdrag.on){
+    if(Math.hypot(e.clientX-sdrag.x0,e.clientY-sdrag.y0)<6) return;
+    sdrag.on=true; const x=secById(sdrag.id);
+    sdrag.from=sections().findIndex(s=>s.id===sdrag.id);
+    sdrag.ghost=document.createElement('div'); sdrag.ghost.className='secghost';
+    const nb=x?S.prog.slice(x.start,x.end+1).reduce((a,c)=>a+c.beats,0):0;
+    sdrag.ghost.innerHTML=`<span class="grip">⠿</span><b>${esc(x&&x.label?x.label:(x&&x.label===''?'Untitled section':'Unlabeled'))}</b><span>${+(nb/S.meter).toFixed(2)} bars</span>`;
+    sdrag.ghost.style.setProperty('--sc',getComputedStyle(sdrag.h).getPropertyValue('--sc'));
+    document.body.appendChild(sdrag.ghost); document.body.classList.add('dragging');
+    if(x) for(let i=x.start;i<=x.end;i++){ const c=strip.querySelector(`.cc[data-id="${S.prog[i].id}"]`); if(c) c.classList.add('secmoving'); }
+    sdrag.h.classList.add('secmoving');
+    sdrag.line=document.createElement('div'); sdrag.line.className='secdrop'; strip.appendChild(sdrag.line);
+  }
+  e.preventDefault();
+  sdrag.ghost.style.transform=`translate(${e.clientX+12}px,${e.clientY-14}px)`;
+  const spans=secSpans(), sr=strip.getBoundingClientRect();
+  let to=spans.length; for(let i=0;i<spans.length;i++){ if(e.clientY<(spans[i].top+spans[i].bottom)/2){ to=i; break; } }
+  sdrag.to=to;
+  const noop=to===sdrag.from||to===sdrag.from+1;
+  const y=to<spans.length?spans[to].top-sr.top-5:spans[spans.length-1].bottom-sr.top+5;
+  Object.assign(sdrag.line.style,{top:y+'px',opacity:noop?'.25':'1'});
+},{passive:false});
+function endSecDrag(){
+  if(!sdrag) return; const d=sdrag; sdrag=null;
+  if(!d.on) return;
+  d.ghost.remove(); d.line.remove(); document.body.classList.remove('dragging');
+  strip.querySelectorAll('.secmoving').forEach(el=>el.classList.remove('secmoving'));
+  justDragged=true; setTimeout(()=>justDragged=false,0);
+  if(d.to!=null&&!moveSection(d.from,d.to)) renderProg();
+}
+window.addEventListener('pointerup',endSecDrag);
+window.addEventListener('pointercancel',endSecDrag);
 window.addEventListener('pointerup',endPointer);
 window.addEventListener('pointercancel',endPointer);
 /* keyboard */
