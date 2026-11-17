@@ -344,6 +344,13 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
 .tkempty{color:var(--muted);font-size:13.5px;padding:10px 4px}
 .tkfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .tkfoot .hint{margin:0}
+.aubar{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.aubar i{display:block;height:100%;width:0;background:var(--brass);transition:width .15s}
+.austat{font-size:13px;color:var(--muted);min-height:18px}
+.austat.err{color:var(--off)}
+#auPlayer{width:100%;margin-top:10px}
+.pdfprev{display:flex;gap:10px;overflow-x:auto;margin-top:10px;padding-bottom:4px}
+.pdfprev img{height:220px;border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.4);background:#fff;flex:none}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 16px;border-radius:10px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px}
 .overlay{position:fixed;inset:0;background:rgba(6,9,14,.6);display:grid;place-items:center;z-index:70;padding:20px}
 .overlay>div{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;max-width:520px;width:100%}
@@ -377,6 +384,8 @@ select,.txt{background:var(--panel2);border:1px solid var(--line2);border-radius
       <span class="libwrap"><button class="btn small" id="dlBtn">Download ▾</button><div class="lib menu" id="dlMenu" hidden>
         <div class="mhead">This song</div>
         <button class="mi" data-dl="text"><b>Text</b><small>A readable chord chart to paste into a doc or notebook</small></button>
+        <button class="mi" data-dl="pdf"><b>PDF</b><small>Sheet music of the Staff view, ready to print</small></button>
+        <button class="mi" data-dl="mp3"><b>Audio (MP3)</b><small>The song played back with your sound, drums and takes</small></button>
         <div class="mhead">Saved progressions</div>
         <button class="mi" data-dl="json" id="dlJson"><b>Export JSON…</b><small>Back up or move any of your saved progressions; bring them back with Open → Import JSON</small></button>
       </div></span>
@@ -740,18 +749,24 @@ function lastSelIdx(){let k=-1; S.prog.forEach((c,i)=>{if(SEL.has(c.id)) k=i;});
 
 /* ================= audio ================= */
 let ctx=null,bus=null,dry=null,voices=[],noiseBuf=null,drumBus=null;
+/* the same signal chain for live playback and for offline rendering */
+function buildGraph(c){
+  const g={};
+  g.dry=c.createDynamicsCompressor(); g.dry.threshold.value=-14; g.dry.ratio.value=3; g.dry.connect(c.destination);
+  g.bus=c.createGain(); g.bus.gain.value=.75; g.bus.connect(g.dry);
+  const len=Math.round(c.sampleRate*2.2), ir=c.createBuffer(2,len,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
+  const verb=c.createConvolver(); verb.buffer=ir; const wet=c.createGain(); wet.gain.value=.2;
+  g.bus.connect(verb); verb.connect(wet); wet.connect(g.dry);
+  g.noiseBuf=c.createBuffer(1,c.sampleRate,c.sampleRate); {const d=g.noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;}
+  g.drumBus=c.createGain(); g.drumBus.gain.value=S.dr.vol/100; g.drumBus.connect(g.dry);
+  const ds=c.createGain(); ds.gain.value=.12; g.drumBus.connect(ds); ds.connect(verb);
+  return g;
+}
 function ensureAudio(){
   if(ctx){ if(ctx.state==='suspended') ctx.resume(); return; }
   ctx=new (window.AudioContext||window.webkitAudioContext)();
-  dry=ctx.createDynamicsCompressor(); dry.threshold.value=-14; dry.ratio.value=3; dry.connect(ctx.destination);
-  bus=ctx.createGain(); bus.gain.value=.75; bus.connect(dry);
-  const len=ctx.sampleRate*2.2, ir=ctx.createBuffer(2,len,ctx.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
-  const verb=ctx.createConvolver(); verb.buffer=ir; const wet=ctx.createGain(); wet.gain.value=.2;
-  bus.connect(verb); verb.connect(wet); wet.connect(dry);
-  noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate); {const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;}
-  drumBus=ctx.createGain(); drumBus.gain.value=S.dr.vol/100; drumBus.connect(dry);
-  const ds=ctx.createGain(); ds.gain.value=.12; drumBus.connect(ds); ds.connect(verb);
+  ({dry,bus,noiseBuf,drumBus}=buildGraph(ctx));
 }
 const hz=m=>440*Math.pow(2,(m-69)/12);
 function osc(type,f,t,end,dest,gain=1){
@@ -1304,18 +1319,19 @@ function keySig(){
 }
 const KS_ORDER={'1':[3,0,4,1,5,2,6],'-1':[6,2,5,1,4,0,3]};            /* letter indices: F C G D A E B / B E A D G C F */
 const KS_TREBLE={'1':[38,35,39,36,33,37,34],'-1':[34,37,33,36,32,35,31]}; /* staff steps on the treble clef */
-function renderStaff(){
-  const box=$('#staffSvg'), head=$('#staffHead'), note=$('#staffNote'), p=S.prog;
+function renderStaff(o={}){
+  const box=o.box||$('#staffSvg'), head=o.head||$('#staffHead'), note=o.note||$('#staffNote'), p=S.prog;
   if(!p.length){head.innerHTML=''; box.innerHTML='<div class="empty" style="padding:28px;text-align:center;color:var(--muted)">Add some chords to see them on the staff.</div>'; note.textContent=''; return;}
   const plan=voicePlan(), m=S.meter, T=p.reduce((a,c)=>a+c.beats,0);
   head.innerHTML=`<span><i style="background:var(--text)"></i>Piano</span>${S.bass?'<span><i style="background:var(--good)"></i>Bass</span>':''}<span class="sp"></span>`+
     (plan.diff.length?`<div class="seg" id="passSeg"><button data-v="first" class="${staffPass==='first'?'on':''}">First time</button><button data-v="loop" class="${staffPass==='loop'?'on':''}">On repeat</button></div>`:'');
   const ks=keySig(), ksAlt=[0,0,0,0,0,0,0]; for(let i=0;i<ks.n;i++) ksAlt[KS_ORDER[ks.t][i]]=ks.t;
   const ksW=ks.n?ks.n*8+6:0, LB=44+ksW, LA=LB+22;
-  const W=Math.max(320,box.clientWidth||strip.clientWidth||900), L=LA, avail=W-L-10;
+  const W=o.W||Math.max(320,box.clientWidth||strip.clientWidth||900), L=LA, avail=W-L-10;
   const bps=Math.max(1,Math.floor(avail/(m*46))), bw=avail/(bps*m), sysB=bps*m, nsys=Math.ceil(T/sysB), SH=186;
   const starts=[]; let acc=0; for(const c of p){starts.push(acc); acc+=c.beats;}
   const ACC=new Map(); /* `${bar}:${staffStep}` → alteration in effect */
+  if(o.out){ o.out.SH=SH; o.out.nsys=nsys; o.out.W=W; }
   let svg=`<svg width="${W}" height="${nsys*SH}" viewBox="0 0 ${W} ${nsys*SH}" xmlns="http://www.w3.org/2000/svg">`;
   for(let k=0;k<nsys;k++){
     const L=k===0?LA:LB;
@@ -1378,7 +1394,7 @@ function renderStaff(){
   note.textContent=S.loop&&d.length
     ? (staffPass==='loop'?`Showing what you hear each time the loop repeats. The first time through, chord${d.length>1?'s':''} ${d.map(i=>i+1).join(', ')} ${d.length>1?'are':'is'} voiced differently, because nothing comes before ${d.length>1?'them':'it'}.`:`Showing the first time through. On repeat, chord${d.length>1?'s':''} ${d.map(i=>i+1).join(', ')} ${d.length>1?'change':'changes'} to lead smoothly out of the last chord.`)
     : 'Each chord is voiced to move smoothly from the one before, so the same chord can sit differently depending on its neighbours. Hover a chord for its note names.';
-  const ps=$('#passSeg'); if(ps) ps.onclick=e=>{const b=e.target.closest('button'); if(!b) return; staffPass=b.dataset.v; renderStaff();};
+  const ps=o.box?null:$('#passSeg'); if(ps) ps.onclick=e=>{const b=e.target.closest('button'); if(!b) return; staffPass=b.dataset.v; renderStaff();};
 }
 let rsT=null; window.addEventListener('resize',()=>{clearTimeout(rsT); rsT=setTimeout(()=>{if(S.view==='staff') renderStaff();},120);});
 
@@ -1891,6 +1907,249 @@ $('#tkList').addEventListener('change',e=>{
   else if(a==='name') updTake(id,{name:e.target.value.trim().slice(0,40)||'Take'});
 });
 
+/* ================= audio export ================= */
+const MP3_LIBS=['https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js','https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js'];
+let lameP=null;
+function loadLame(){
+  if(window.lamejs&&window.lamejs.Mp3Encoder) return Promise.resolve(window.lamejs);
+  if(lameP) return lameP;
+  lameP=(async()=>{
+    for(const url of MP3_LIBS){
+      try{ await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=url; sc.async=true; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); setTimeout(()=>rej(new Error('timeout')),15000); });
+        if(window.lamejs&&window.lamejs.Mp3Encoder) return window.lamejs; }catch(e){}
+    }
+    lameP=null; throw new Error('MP3 encoder unavailable');
+  })();
+  return lameP;
+}
+/* render the song offline through the same synth, drums and mix as live playback */
+async function renderSong({loops,drums,takes,onProgress}){
+  if(P.playing||P.id!=null) stop(); stopTakePlay(); stopAud();
+  ensureAudio();
+  const SR=44100, spb=60/S.bpm, T=S.prog.reduce((a,c)=>a+c.beats,0), lead=0.1;
+  const songDur=lead+T*loops*spb;
+  /* decode chosen takes with the live context (buffers work in any context) */
+  const tk=[]; for(const t of takes){ try{ tk.push({t,buf:await takeBuf(t)}); }catch(e){} }
+  let end=songDur+2.5;
+  for(const {t,buf} of tk){ const off=t.withSong?t.lead+(t.nudge||0)/1000:0; end=Math.max(end,lead+buf.duration-Math.max(0,off)+Math.max(0,-off)+0.5); }
+  const oc=new OfflineAudioContext(2,Math.ceil(end*SR),SR);
+  const g=buildGraph(oc);
+  /* run the scheduler against the offline context */
+  const saved={ctx,bus,dry,drumBus,noiseBuf,voices}, sp={...P}, ss={loop:S.loop,metro:S.metro,on:S.dr.on};
+  try{
+    ctx=oc; ({bus,dry,drumBus,noiseBuf}=g); voices=[];
+    S.loop=true; S.metro=false; S.dr.on=drums;
+    Object.assign(P,{playing:true,id:null,idx:0,beat:0,g:0,next:lead,t0:lead,events:[],resume:true,lastV:null,voice:null,vkey:null,ending:false,crashNext:false});
+    for(let i=0;i<T*loops;i++) scheduleBeat();
+  } finally {
+    ({ctx,bus,dry,drumBus,noiseBuf,voices}=saved); Object.assign(P,sp); S.loop=ss.loop; S.metro=ss.metro; S.dr.on=ss.on;
+  }
+  for(const {t,buf} of tk){
+    const gn=oc.createGain(); gn.gain.value=t.vol??1; gn.connect(g.dry);
+    const src=oc.createBufferSource(); src.buffer=buf; src.connect(gn);
+    const off=t.withSong?t.lead+(t.nudge||0)/1000:0;
+    if(off>=0) src.start(lead,Math.min(off,buf.duration)); else src.start(lead-off,0);
+  }
+  onProgress&&onProgress(.05,'Rendering…');
+  const out=await oc.startRendering();
+  return out;
+}
+const yieldUI=()=>new Promise(r=>setTimeout(r,0));
+function toI16(f){ const o=new Int16Array(f.length); for(let i=0;i<f.length;i++){ const v=Math.max(-1,Math.min(1,f[i])); o[i]=v<0?v*0x8000:v*0x7fff; } return o; }
+function normalize(buf){ let pk=0; for(let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for(let i=0;i<d.length;i++){ const a=Math.abs(d[i]); if(a>pk) pk=a; } }
+  if(pk>0.95){ const k=0.95/pk; for(let c=0;c<buf.numberOfChannels;c++){ const d=buf.getChannelData(c); for(let i=0;i<d.length;i++) d[i]*=k; } } }
+async function encodeMp3(buf,onProgress){
+  const lame=await loadLame();
+  const enc=new lame.Mp3Encoder(2,buf.sampleRate,192), L=toI16(buf.getChannelData(0)), R=toI16(buf.getChannelData(1)), parts=[], N=1152;
+  for(let i=0,k=0;i<L.length;i+=N,k++){ const b=enc.encodeBuffer(L.subarray(i,i+N),R.subarray(i,i+N)); if(b.length) parts.push(new Uint8Array(b)); if(k%200===0){ onProgress(.5+.5*i/L.length,'Encoding MP3…'); await yieldUI(); } }
+  const f=enc.flush(); if(f.length) parts.push(new Uint8Array(f));
+  return new Blob(parts,{type:'audio/mpeg'});
+}
+function encodeWav(buf){
+  const ch=2, n=buf.length, L=toI16(buf.getChannelData(0)), R=toI16(buf.getChannelData(1)), dv=new DataView(new ArrayBuffer(44+n*ch*2));
+  const w=(o,s)=>{ for(let i=0;i<s.length;i++) dv.setUint8(o+i,s.charCodeAt(i)); };
+  w(0,'RIFF'); dv.setUint32(4,36+n*ch*2,true); w(8,'WAVE'); w(12,'fmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,ch,true);
+  dv.setUint32(24,buf.sampleRate,true); dv.setUint32(28,buf.sampleRate*ch*2,true); dv.setUint16(32,ch*2,true); dv.setUint16(34,16,true); w(36,'data'); dv.setUint32(40,n*ch*2,true);
+  for(let i=0,o=44;i<n;i++,o+=4){ dv.setInt16(o,L[i],true); dv.setInt16(o+2,R[i],true); }
+  return new Blob([dv],{type:'audio/wav'});
+}
+function audioDialog(){
+  if(!S.prog.length){toast('Add some chords first'); return;}
+  if(!window.OfflineAudioContext){toast('This browser can’t render audio'); return;}
+  const framed=window.self!==window.top, sk=songKey(), takes=TK.list.filter(t=>t.song===sk).sort((a,b)=>b.at-a.at);
+  const T=S.prog.reduce((a,c)=>a+c.beats,0), secs=n=>fmtDur(T*n*60/S.bpm);
+  const {ov,close}=overlay(`<h3>Audio${S.cur?' — '+esc(S.cur):''}</h3><p>Renders the song with your current sound, rhythm, bass and tempo. Takes are lined up the same way “▶ With song” plays them.</p>
+    <div class="txopts">
+      <label>Times through <select id="auLoops">${[1,2,3,4].map(n=>`<option value="${n}">${n} (${secs(n)})</option>`).join('')}</select></label>
+      <label><input type="checkbox" id="auDrums" ${S.dr.on?'checked':''}> Drums</label>
+    </div>
+    ${takes.length?`<div class="xlist">${takes.map((t,i)=>`<label><input type="checkbox" class="auTk" value="${t.id}" ${i===0?'checked':''}> ${esc(t.name)} <small>${fmtDur(t.dur)}${t.withSong?'':' · added file, starts at the top'}</small></label>`).join('')}</div>`:'<p class="dim" style="margin:0 0 6px">No takes for this song, so the audio will be chords and drums only.</p>'}
+    <div class="aubar" id="auBarW" hidden><i id="auBar"></i></div><div class="austat" id="auStat"></div>
+    <audio controls id="auPlayer" hidden></audio>
+    <div class="dbtns"><button class="btn small" data-c>Close</button><button class="btn small" id="auWav" hidden>Make WAV instead</button><button class="btn small" id="auDl" hidden>Download</button><button class="btn small primary" id="auGo">Render MP3</button></div>
+    ${framed?'<p class="hint" style="margin-top:8px">The Claude viewer blocks downloads, so here you can listen to the result. To save the file, use Changes from GitHub Pages or the downloaded index.html.</p>':''}`,()=>{ if(url) URL.revokeObjectURL(url); });
+  let url=null, busy=false, rendered=null;
+  const stat=(t,err)=>{ const el=ov.querySelector('#auStat'); el.textContent=t; el.classList.toggle('err',!!err); };
+  const prog=(f,t)=>{ ov.querySelector('#auBarW').hidden=false; ov.querySelector('#auBar').style.width=Math.round(f*100)+'%'; if(t) stat(t); };
+  const show=(blob,ext)=>{
+    if(url) URL.revokeObjectURL(url); url=URL.createObjectURL(blob);
+    const pl=ov.querySelector('#auPlayer'); pl.src=url; pl.hidden=false;
+    const name=`${slugify(S.cur||'untitled')||'untitled'}.${ext}`;
+    const dl=ov.querySelector('#auDl'); dl.hidden=framed; dl.textContent=`Download .${ext}`;
+    dl.onclick=()=>{ const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); };
+    stat(`${ext.toUpperCase()} ready · ${fmtDur(rendered.duration)} · ${(blob.size/1048576).toFixed(1)} MB${framed?'':' · '+name}`);
+    ov.querySelector('#auBar').style.width='100%';
+  };
+  const getRender=async()=>{
+    if(rendered) return rendered;
+    const loops=+ov.querySelector('#auLoops').value, drums=ov.querySelector('#auDrums').checked;
+    const ids=[...ov.querySelectorAll('.auTk:checked')].map(i=>i.value), tks=TK.list.filter(t=>ids.includes(t.id));
+    prog(.02,'Rendering the song…'); await yieldUI();
+    rendered=await renderSong({loops,drums,takes:tks,onProgress:prog});
+    normalize(rendered); prog(.5,'Rendered.'); return rendered;
+  };
+  ov.querySelectorAll('#auLoops,#auDrums,.auTk').forEach(el=>el.onchange=()=>{ rendered=null; });
+  ov.querySelector('[data-c]').onclick=close;
+  ov.querySelector('#auGo').onclick=async()=>{
+    if(busy) return; busy=true; ov.querySelector('#auGo').disabled=true; ov.querySelector('#auWav').hidden=true;
+    try{
+      const buf=await getRender(); prog(.5,'Loading the MP3 encoder…');
+      let blob; try{ blob=await encodeMp3(buf,prog); }
+      catch(e){ stat('Couldn’t load the MP3 encoder. It downloads from a code CDN the first time, so it needs an internet connection. You can make a WAV file instead.',true); ov.querySelector('#auWav').hidden=false; return; }
+      show(blob,'mp3');
+    }catch(e){ stat('Rendering failed: '+(e&&e.message||e),true); }
+    finally{ busy=false; ov.querySelector('#auGo').disabled=false; ov.querySelector('#auGo').textContent='Render again'; }
+  };
+  ov.querySelector('#auWav').onclick=async()=>{
+    if(busy) return; busy=true;
+    try{ const buf=await getRender(); prog(.8,'Writing WAV…'); await yieldUI(); show(encodeWav(buf),'wav'); }
+    catch(e){ stat('Rendering failed: '+(e&&e.message||e),true); }
+    finally{ busy=false; }
+  };
+}
+
+/* ================= PDF (sheet music from the Staff view) ================= */
+const PRINT_CSS=`.stl,.bar{stroke:#222;stroke-width:1}.lg{stroke:#222;stroke-width:1}
+.nh{fill:none;stroke:#111;stroke-width:1.7}.nh.q{fill:#111}.nh.bs{stroke:#12766a}.nh.q.bs{fill:#12766a}
+.stem{stroke:#111;stroke-width:1.3}.tie{fill:none;stroke:#111;stroke-width:1.2}.tie.bs{stroke:#12766a}
+.dot{fill:#111}.dot.bs{fill:#12766a}.hl{fill:none}.rmk{fill:none;stroke:#8a5d1c;stroke-width:1.2}`;
+function printFill(el){
+  const c=el.classList, cont=el.closest('.sc.cont');
+  if(c.contains('sym')) return cont?'#666':'#000';
+  if(c.contains('rmkt')) return '#8a5d1c';
+  if(c.contains('bnum')) return '#777';
+  if(c.contains('acc')) return c.contains('bs')?'#12766a':'#111';
+  return '#111';
+}
+async function deflate(u8){
+  if(!window.CompressionStream) return null;
+  const st=new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'));
+  return new Uint8Array(await new Response(st).arrayBuffer());
+}
+function pdfStr(t){ /* UTF-16BE hex string, so any title works */
+  let h='FEFF'; for(const ch of String(t)){ const cp=ch.codePointAt(0); const u=cp>0xffff?[0xd800+((cp-0x10000)>>10),0xdc00+((cp-0x10000)&0x3ff)]:[cp]; for(const x of u) h+=x.toString(16).padStart(4,'0'); } return `<${h.toUpperCase()}>`;
+}
+/* minimal PDF writer: one full-page image per page */
+async function buildPdf(canvases,title){
+  const enc=new TextEncoder(), parts=[], offs=[]; let pos=0;
+  const push=b=>{ const u=typeof b==='string'?enc.encode(b):b; parts.push(u); pos+=u.length; };
+  const obj=(n,body)=>{ offs[n]=pos; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
+  push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n'.replace(/[\u0080-ÿ]/g,c=>c)); /* header + binary marker */
+  const N=canvases.length, pageIds=canvases.map((_,i)=>4+i*3);
+  obj(1,()=>push(`<< /Type /Catalog /Pages 2 0 R >>`));
+  obj(2,()=>push(`<< /Type /Pages /Kids [${pageIds.map(id=>id+' 0 R').join(' ')}] /Count ${N} >>`));
+  obj(3,()=>push(`<< /Title ${pdfStr(title)} /Creator ${pdfStr('Changes — Chord Progression Builder')} /Producer ${pdfStr('Changes')} >>`));
+  for(let i=0;i<N;i++){
+    const cv=canvases[i], w=cv.width, h=cv.height, id=pageIds[i];
+    const px=cv.getContext('2d').getImageData(0,0,w,h).data, rgb=new Uint8Array(w*h*3);
+    for(let a=0,b=0;a<px.length;a+=4,b+=3){ rgb[b]=px[a]; rgb[b+1]=px[a+1]; rgb[b+2]=px[a+2]; }
+    let data=await deflate(rgb), filter='/FlateDecode';
+    if(!data){ const jb=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92)); data=new Uint8Array(await jb.arrayBuffer()); filter='/DCTDecode'; }
+    const content=`q 612 0 0 792 0 0 cm /Im0 Do Q`;
+    obj(id,()=>push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /Im0 ${id+1} 0 R >> >> /Contents ${id+2} 0 R >>`));
+    obj(id+1,()=>{ push(`<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter ${filter} /Length ${data.length} >>\nstream\n`); push(data); push('\nendstream'); });
+    obj(id+2,()=>push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+    await yieldUI();
+  }
+  const total=4+N*3, xref=pos;
+  let x=`xref\n0 ${total}\n0000000000 65535 f \n`; for(let n=1;n<total;n++) x+=String(offs[n]).padStart(10,'0')+' 00000 n \n';
+  push(x); push(`trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts,{type:'application/pdf'});
+}
+/* draw the staff onto Letter-size pages (612×792 pt at 2× = 1224×1584 px) */
+async function staffPages(onProgress){
+  const SCALE=2, PW=612*SCALE, PH=792*SCALE, M=36*SCALE, CW=PW-2*M;
+  const Wcss=900, f=CW/Wcss;
+  /* draw an off-screen staff at a fixed width */
+  const host=document.createElement('div'); host.style.cssText=`position:fixed;left:-20000px;top:0;width:${Wcss}px`;
+  const box=document.createElement('div'), dummy=document.createElement('div'); host.append(box); document.body.appendChild(host);
+  const meta={}; renderStaff({box,head:dummy,note:dummy,W:Wcss,out:meta});
+  const live=box.querySelector('svg');
+  try{
+    try{ await Promise.all(['34px "Noto Music"','16px "Noto Music"','600 15px Fraunces','600 26px Fraunces','13px Inter','10px "JetBrains Mono"'].map(ff=>document.fonts.load(ff,'𝄞𝄢♯♭♮𝄪𝄫Ab4'))); await document.fonts.ready; }catch(e){}
+    /* collect the text, to draw with the page's fonts */
+    const texts=[...live.querySelectorAll('text')].map(t=>{ const cs=getComputedStyle(t); return {x:+t.getAttribute('x'),y:+t.getAttribute('y'),s:t.textContent,anchor:t.getAttribute('text-anchor')||'start',
+      font:`${cs.fontStyle} ${cs.fontWeight} ${parseFloat(cs.fontSize)*f}px ${cs.fontFamily}`,fill:printFill(t)}; });
+    /* shapes only, recoloured for paper */
+    const cl=live.cloneNode(true); cl.querySelectorAll('text,title').forEach(n=>n.remove());
+    const st=document.createElementNS('http://www.w3.org/2000/svg','style'); st.textContent=PRINT_CSS; cl.insertBefore(st,cl.firstChild);
+    cl.setAttribute('width',Math.round(meta.W*f)); cl.setAttribute('height',Math.round(meta.nsys*meta.SH*f));
+    const img=new Image(); const svgUrl=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(cl)],{type:'image/svg+xml'}));
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error('Couldn’t draw the staff')); img.src=svgUrl; });
+    URL.revokeObjectURL(svgUrl);
+    /* lay systems out on pages */
+    const sysH=meta.SH*f, pages=[]; let cv=null, g=null, y=0;
+    const k0=KEYN[S.key], md=({ionian:`${k0} major`,aeolian:`${k0} minor`,harmonic:`${k0} harmonic minor`,melodic:`${k0} melodic minor`})[S.mode]||`${k0} ${MODES[S.mode].n}`;
+    const newPage=()=>{ cv=document.createElement('canvas'); cv.width=PW; cv.height=PH; g=cv.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,PW,PH); pages.push(cv); y=M;
+      if(pages.length===1){
+        g.fillStyle='#000'; g.textAlign='center'; g.textBaseline='alphabetic';
+        g.font=`600 ${26*SCALE}px Fraunces, Georgia, serif`; g.fillText(S.cur||'Untitled',PW/2,y+26*SCALE); y+=38*SCALE;
+        g.font=`${11*SCALE}px Inter, system-ui, sans-serif`; g.fillStyle='#444';
+        let sub=`${md} · ${S.bpm} bpm · ${S.meter}/4`;
+        if(hasSections()) sub+=`  ·  Form: ${sections().map(x=>x.label||'Untitled').join(' – ')}`;
+        g.fillText(sub,PW/2,y+4*SCALE); y+=18*SCALE;
+      } };
+    newPage();
+    for(let k=0;k<meta.nsys;k++){
+      if(y+sysH>PH-M-14*SCALE) newPage();
+      g.drawImage(img,0,k*meta.SH*f,img.width,sysH,M,y,CW,sysH);
+      for(const t of texts){ if(t.y<k*meta.SH||t.y>=(k+1)*meta.SH) continue;
+        g.font=t.font; g.fillStyle=t.fill; g.textAlign=t.anchor==='middle'?'center':t.anchor==='end'?'right':'left'; g.textBaseline='alphabetic';
+        g.fillText(t.s,M+t.x*f,y+(t.y-k*meta.SH)*f); }
+      y+=sysH; onProgress&&onProgress(.1+.5*(k+1)/meta.nsys);
+      if(k%3===2) await yieldUI();
+    }
+    pages.forEach((p,i)=>{ const c=p.getContext('2d'); c.font=`${9*SCALE}px Inter, system-ui, sans-serif`; c.fillStyle='#888'; c.textAlign='center';
+      c.fillText(`${S.cur||'Untitled'} — page ${i+1} of ${pages.length}`,PW/2,PH-18*SCALE); });
+    return pages;
+  } finally { host.remove(); }
+}
+function pdfDialog(){
+  if(!S.prog.length){toast('Add some chords first'); return;}
+  const framed=window.self!==window.top, name=`${slugify(S.cur||'untitled')||'untitled'}.pdf`;
+  const passNote=voicePlan().diff.length?` Voicings are shown ${staffPass==='first'?'as played the first time through':'as heard when the loop repeats'}, as set in the Staff view.`:'';
+  const {ov,close}=overlay(`<h3>PDF${S.cur?' — '+esc(S.cur):''}</h3><p>Sheet music of the Staff view on Letter pages, in black and white with the bass in teal.${passNote}</p>
+    <div class="aubar" id="pdBarW"><i id="pdBar"></i></div><div class="austat" id="pdStat">Preparing pages…</div>
+    <div class="pdfprev" id="pdPrev"></div>
+    <div class="dbtns"><button class="btn small" data-c>Close</button><button class="btn small primary" id="pdDl" hidden>Download .pdf</button></div>
+    ${framed?'<p class="hint" style="margin-top:8px">The Claude viewer blocks downloads, so you can preview the pages here. To save the PDF, use Changes from GitHub Pages or the downloaded index.html.</p>':''}`,()=>{ if(url) URL.revokeObjectURL(url); });
+  let url=null;
+  const prog=f=>{ ov.querySelector('#pdBar').style.width=Math.round(f*100)+'%'; };
+  ov.querySelector('[data-c]').onclick=close;
+  (async()=>{
+    try{
+      const pages=await staffPages(prog);
+      ov.querySelector('#pdStat').textContent='Writing PDF…'; prog(.7);
+      const blob=await buildPdf(pages,S.cur||'Untitled'); prog(1);
+      url=URL.createObjectURL(blob);
+      ov.querySelector('#pdPrev').innerHTML=pages.map(p=>`<img src="${p.toDataURL('image/png')}" alt="Page preview">`).join('');
+      ov.querySelector('#pdStat').textContent=`${pages.length} page${pages.length>1?'s':''} · ${(blob.size/1048576).toFixed(1)} MB${framed?'':' · '+name}`;
+      const dl=ov.querySelector('#pdDl'); dl.hidden=framed;
+      dl.onclick=()=>{ const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); };
+    }catch(e){ const st=ov.querySelector('#pdStat'); st.textContent='Couldn’t make the PDF: '+(e&&e.message||e); st.classList.add('err'); }
+  })();
+}
+
 /* ================= events ================= */
 document.addEventListener('click',e=>{const b=e.target.closest('button'); if(b&&e.detail>0) b.blur();});
 $('#playBtn').onclick=toggle;
@@ -1919,7 +2178,7 @@ $('#lib').onclick=e=>{
 };
 document.addEventListener('click',e=>{ if(e.target.closest('.overlay')) return; const w=e.target.closest('.libwrap'); document.querySelectorAll('.libwrap > .lib').forEach(m=>{ if(!w||!w.contains(m)) m.hidden=true; }); });
 $('#dlBtn').onclick=e=>{ e.stopPropagation(); $('#lib').hidden=true; const m=$('#dlMenu'); m.hidden=!m.hidden; if(!m.hidden){ const n=Object.keys(S.saved).length, j=$('#dlJson'); j.disabled=!n; j.querySelector('small').textContent=n?`Back up or move any of your ${n} saved progression${n>1?'s':''}; bring them back with Open → Import JSON`:'Save a progression first, then export it here'; } };
-$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); else if(b.dataset.dl==='json') exportDialog(); };
+$('#dlMenu').onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-dl]'); if(!b) return; $('#dlMenu').hidden=true; if(b.dataset.dl==='text') textDialog(); else if(b.dataset.dl==='mp3') audioDialog(); else if(b.dataset.dl==='pdf') pdfDialog(); else if(b.dataset.dl==='json') exportDialog(); };
 $('#viewSeg').onclick=e=>{const b=e.target.closest('button'); if(!b) return; S.view=b.dataset.v; persist(); renderProg();};
 $('#selAllBtn').onclick=selectAll;
 $('#multiBtn').onclick=()=>{S.multi=!S.multi; renderProg();};
