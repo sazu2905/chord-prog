@@ -633,6 +633,9 @@ let S=Object.assign({},DEF);
 try{const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d) S=Object.assign(S,d);}catch(e){}
 S.tk=Object.assign({},DEF.tk,S.tk||{}); S.dr=Object.assign({},DEF.dr,S.dr||{}); S.dr.pres=Object.assign({},DEF.dr.pres,S.dr.pres||{}); S.dr.mutes=S.dr.mutes||{};
 S.sel=null;
+window.addEventListener('beforeunload',e=>{
+  if((typeof isDirty==='function'&&isDirty())||(typeof TK!=='undefined'&&TK.rec)){ e.preventDefault(); e.returnValue=''; return ''; }
+});
 window.addEventListener('storage',e=>{
   if(e.key!==LS||document.getElementById('tabWarn')) return;
   const d=document.createElement('div'); d.id='tabWarn'; d.className='tabwarn';
@@ -1129,8 +1132,20 @@ function isDirty(){
   const a=curDoc(); if(!sv.dr) a.dr=null;
   return canon(a)!==canon(sv);
 }
+/* unsaved-changes cue in the browser tab: blue dot on the icon, ● in the title */
+const FAV_DIRTY="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23e6b552'/%3E%3Cstop offset='1' stop-color='%238a5d1c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M32 14 L50.5 48 H13.5 Z' fill='none' stroke='%231a1408' stroke-width='6.5' stroke-linejoin='round'/%3E%3Ccircle cx='51' cy='13' r='12.5' fill='%230e131d'/%3E%3Ccircle cx='51' cy='13' r='9.5' fill='%233b8bf6'/%3E%3C/svg%3E";
+let FAV_ORIG=null, TAB_DIRTY=null;
+function tabCue(d){
+  if(d===TAB_DIRTY) return; TAB_DIRTY=d;
+  const links=[...document.querySelectorAll('link[rel="icon"]')];
+  if(!FAV_ORIG) FAV_ORIG=links.map(l=>({href:l.href,type:l.type}));
+  links.forEach((l,i)=>{ if(d){ l.href=FAV_DIRTY; l.type='image/svg+xml'; } else { l.href=FAV_ORIG[i].href; l.type=FAV_ORIG[i].type; } });
+  const base=S.cur?`${S.cur} — Changes`:'Changes — Chord Progression Builder';
+  document.title=(d?'● ':'')+base;
+}
 function renderDoc(){
   const d=isDirty();
+  TAB_DIRTY=null; tabCue(d);
   $('#docName').textContent=S.cur||'Untitled';
   const st=$('#docState'); st.classList.toggle('dirty',d);
   st.textContent=S.cur?(d?'Unsaved changes':'Saved'):(S.prog.length?'Not saved yet':'');
